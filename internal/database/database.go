@@ -17,17 +17,23 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Service represents a service that interacts with a database.
+// Service represents a DbService that interacts with a database.
 type Service interface {
 	// Health returns a map of health status information.
-	// The keys and values in the map are service-specific.
+	// The keys and values in the map are DbService-specific.
 	Health() map[string]string
 
-	Visitor(ip string) (string, error)
+	Password(key string) (*sql.Node, bool, error)
+
+	Visitor(ip netip.Addr) (string, error)
+
+	PushNode(nodeID int, visitorUUID string, quantity int) error
+
+	StatusNode(nodeID int, charging bool, chargingTime int, dischargingTime int, level int) error
 }
 
-type service struct {
-	db *pgxpool.Pool
+type DbService struct {
+	DB *pgxpool.Pool
 }
 
 var (
@@ -37,7 +43,7 @@ var (
 	port       = os.Getenv("DB_PORT")
 	host       = os.Getenv("DB_HOST")
 	schema     = os.Getenv("DB_SCHEMA")
-	dbInstance *service
+	dbInstance *DbService
 )
 
 func New() Service {
@@ -54,22 +60,22 @@ func New() Service {
 		log.Fatal().AnErr("error", err).Send()
 	}
 	//defer db.Close()
-	dbInstance = &service{
-		db: db,
+	dbInstance = &DbService{
+		DB: db,
 	}
 	return dbInstance
 }
 
 // Health checks the health of the database connection by pinging the database.
 // It returns a map with keys indicating various health statistics.
-func (s *service) Health() map[string]string {
+func (s *DbService) Health() map[string]string {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
 	stats := make(map[string]string)
 
 	// Ping the database
-	err := s.db.Ping(ctx)
+	err := s.DB.Ping(ctx)
 	if err != nil {
 		stats["status"] = "down"
 		stats["error"] = fmt.Sprintf("db down: %v", err)
@@ -80,30 +86,50 @@ func (s *service) Health() map[string]string {
 	return stats
 }
 
-func (s *service) Visitor(ip string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
+func (s *DbService) Password(key string) (*sql.Node, bool, error) {
+	ctx := context.Background()
 
-	q, err := s.db.Begin(ctx)
+	q, err := s.DB.Begin(ctx)
 	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
+		if q != nil {
+			_ = q.Rollback(ctx)
+		}
+	}(q, ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	queries := sql.New(q)
+
+	nodeByKey, err := queries.GetNodeByKey(ctx, pgtype.Text{
+		String: key,
+		Valid:  true,
+	})
+	if err != nil {
+		return nil, false, err
+	}
+
+	return &nodeByKey, true, nil
+}
+
+func (s *DbService) Visitor(ip netip.Addr) (string, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		if q != nil {
+			_ = q.Rollback(ctx)
+		}
 	}(q, ctx)
 	if err != nil {
 		return "", err
 	}
 	queries := sql.New(q)
 
-	// Parse ip address into type
-	addr, err := netip.ParseAddr(ip)
-	if err != nil {
-		return "", err
-	}
-
 	// Check if visitor exists with ip
-	visitorByIp, err := queries.GetVisitorByIp(ctx, &addr)
+	visitorByIp, err := queries.GetVisitorByIp(ctx, &ip)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Create a new visitor
-		visitorByIp, err := queries.CreateVisitor(ctx, &addr)
+		visitorByIp, err := queries.CreateVisitor(ctx, &ip)
 		if err != nil {
 			return "", err
 		}
@@ -120,11 +146,10 @@ func (s *service) Visitor(ip string) (string, error) {
 	return fmt.Sprintf("%x", visitorByIp.ID.Bytes), nil
 }
 
-func (s *service) PushNode(nodeID string, visitorUUID string, quantity int) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
+func (s *DbService) PushNode(nodeID int, visitorUUID string, quantity int) error {
+	ctx := context.Background()
 
-	q, err := s.db.Begin(ctx)
+	q, err := s.DB.Begin(ctx)
 	defer func(q pgx.Tx, ctx context.Context) {
 		_ = q.Rollback(ctx)
 	}(q, ctx)
@@ -140,7 +165,7 @@ func (s *service) PushNode(nodeID string, visitorUUID string, quantity int) erro
 	}
 
 	// Get type of node
-	nodeById, err := queries.GetNodeById(ctx, nodeID)
+	nodeById, err := queries.GetNodeById(ctx, int64(nodeID))
 	if err != nil {
 		return err
 	}
@@ -148,7 +173,7 @@ func (s *service) PushNode(nodeID string, visitorUUID string, quantity int) erro
 	switch nodeById.Type {
 	case sql.NodeTypeENTRY:
 		var entryLogType sql.EntryLogsType
-		entryLog, err := queries.GetEntryLogByNodeId(ctx, pgtype.Text{String: nodeById.ID, Valid: true})
+		entryLog, err := queries.GetEntryLogByNodeId(ctx, pgtype.Int8{Int64: nodeById.ID, Valid: true})
 		if errors.Is(err, pgx.ErrNoRows) {
 			entryLogType = sql.EntryLogsTypeENTERED
 		} else if err != nil {
@@ -162,9 +187,9 @@ func (s *service) PushNode(nodeID string, visitorUUID string, quantity int) erro
 		}
 
 		err = queries.CreateEntryLog(ctx, sql.CreateEntryLogParams{
-			NodeID: pgtype.Text{
-				String: nodeById.ID,
-				Valid:  true,
+			NodeID: pgtype.Int8{
+				Int64: nodeById.ID,
+				Valid: true,
 			},
 			VisitorID: visitorById.ID,
 			Type:      entryLogType,
@@ -182,9 +207,9 @@ func (s *service) PushNode(nodeID string, visitorUUID string, quantity int) erro
 
 	case sql.NodeTypeFOODSTALL:
 		err := queries.CreateFoodStallLog(ctx, sql.CreateFoodStallLogParams{
-			NodeID: pgtype.Text{
-				String: nodeById.ID,
-				Valid:  true,
+			NodeID: pgtype.Int8{
+				Int64: nodeById.ID,
+				Valid: true,
 			},
 			VisitorID: visitorById.ID,
 			Quantity:  int32(quantity),
@@ -202,9 +227,9 @@ func (s *service) PushNode(nodeID string, visitorUUID string, quantity int) erro
 
 	case sql.NodeTypeEXHIBITION:
 		err := queries.CreateExhibitionLog(ctx, sql.CreateExhibitionLogParams{
-			NodeID: pgtype.Text{
-				String: nodeById.ID,
-				Valid:  true,
+			NodeID: pgtype.Int8{
+				Int64: nodeById.ID,
+				Valid: true,
 			},
 			VisitorID: visitorById.ID,
 		})
@@ -219,6 +244,40 @@ func (s *service) PushNode(nodeID string, visitorUUID string, quantity int) erro
 
 		return nil
 
+	}
+
+	return nil
+}
+
+func (s *DbService) StatusNode(nodeID int, charging bool, chargingTime int, dischargingTime int, level int) error {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return err
+	}
+	queries := sql.New(q)
+
+	err = queries.UpdateBattery(ctx, sql.UpdateBatteryParams{
+		NodeID: pgtype.Int8{
+			Int64: int64(nodeID),
+			Valid: true,
+		},
+		Level:           int32(level),
+		ChargingTime:    int32(chargingTime),
+		DischargingTime: int32(dischargingTime),
+		Charging:        charging,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return err
 	}
 
 	return nil

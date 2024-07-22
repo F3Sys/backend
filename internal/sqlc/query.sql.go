@@ -20,7 +20,7 @@ VALUES
 `
 
 type CreateEntryLogParams struct {
-	NodeID    pgtype.Text
+	NodeID    pgtype.Int8
 	VisitorID pgtype.UUID
 	Type      EntryLogsType
 }
@@ -38,7 +38,7 @@ VALUES
 `
 
 type CreateExhibitionLogParams struct {
-	NodeID    pgtype.Text
+	NodeID    pgtype.Int8
 	VisitorID pgtype.UUID
 }
 
@@ -55,7 +55,7 @@ VALUES
 `
 
 type CreateFoodStallLogParams struct {
-	NodeID    pgtype.Text
+	NodeID    pgtype.Int8
 	VisitorID pgtype.UUID
 	Quantity  int32
 }
@@ -67,9 +67,9 @@ func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLog
 
 const createVisitor = `-- name: CreateVisitor :one
 INSERT INTO visitors
-    (id, ip)
+    (ip)
 VALUES
-    (gen_random_uuid(), $1)
+    ($1)
 RETURNING
     id, created_at, updated_at, ip
 `
@@ -99,7 +99,7 @@ LIMIT
     1
 `
 
-func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID pgtype.Text) (EntryLog, error) {
+func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID pgtype.Int8) (EntryLog, error) {
 	row := q.db.QueryRow(ctx, getEntryLogByNodeId, nodeID)
 	var i EntryLog
 	err := row.Scan(
@@ -114,19 +114,42 @@ func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID pgtype.Text) (
 }
 
 const getNodeById = `-- name: GetNodeById :one
-SELECT id, password, name, type, price, created_at, updated_at FROM nodes
+SELECT id, key, name, type, price, created_at, updated_at FROM nodes
 WHERE
     id = $1
 LIMIT
     1
 `
 
-func (q *Queries) GetNodeById(ctx context.Context, id string) (Node, error) {
+func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 	row := q.db.QueryRow(ctx, getNodeById, id)
 	var i Node
 	err := row.Scan(
 		&i.ID,
-		&i.Password,
+		&i.Key,
+		&i.Name,
+		&i.Type,
+		&i.Price,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getNodeByKey = `-- name: GetNodeByKey :one
+SELECT id, key, name, type, price, created_at, updated_at FROM nodes
+WHERE
+    key = $1
+LIMIT
+    1
+`
+
+func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, error) {
+	row := q.db.QueryRow(ctx, getNodeByKey, key)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Key,
 		&i.Name,
 		&i.Type,
 		&i.Price,
@@ -174,4 +197,30 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, 
 		&i.Ip,
 	)
 	return i, err
+}
+
+const updateBattery = `-- name: UpdateBattery :exec
+INSERT INTO batteries
+    (node_id, level, charging_time, discharging_time, charging, updated_at)
+VALUES
+    ($1, $2, $3, $4, $5, now())
+`
+
+type UpdateBatteryParams struct {
+	NodeID          pgtype.Int8
+	Level           int32
+	ChargingTime    int32
+	DischargingTime int32
+	Charging        bool
+}
+
+func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) error {
+	_, err := q.db.Exec(ctx, updateBattery,
+		arg.NodeID,
+		arg.Level,
+		arg.ChargingTime,
+		arg.DischargingTime,
+		arg.Charging,
+	)
+	return err
 }

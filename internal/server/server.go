@@ -2,33 +2,32 @@ package server
 
 import (
 	"fmt"
+	_ "github.com/joho/godotenv/autoload"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
 
-	_ "github.com/joho/godotenv/autoload"
-
 	"backend/internal/database"
 )
 
 type Server struct {
-	port int
+	Port int
 
-	db database.Service
+	DB database.Service
 }
 
 func NewServer() *http.Server {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 	NewServer := &Server{
-		port: port,
+		Port: port,
 
-		db: database.New(),
+		DB: database.New(),
 	}
 
 	// Declare Server config
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", NewServer.port),
+		Addr:         fmt.Sprintf(":%d", NewServer.Port),
 		Handler:      NewServer.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,

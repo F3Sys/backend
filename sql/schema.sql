@@ -3,8 +3,8 @@ CREATE TYPE node_type AS ENUM ('ENTRY', 'FOODSTALL', 'EXHIBITION');
 -- Node table
 CREATE TABLE nodes
 (
-    id         VARCHAR(255) PRIMARY KEY,
-    password   VARCHAR(255),
+    id         BIGSERIAL PRIMARY KEY,
+    key        VARCHAR(255),
     name       VARCHAR(255) NOT NULL,
     type       node_type NOT NULL,
     price      INTEGER NOT NULL,
@@ -15,8 +15,8 @@ CREATE TABLE nodes
 -- Battery table
 CREATE TABLE batteries
 (
-    id               BIGINT PRIMARY KEY GENERATED always AS IDENTITY,
-    node_id          VARCHAR(255),
+    id               BIGSERIAL PRIMARY KEY,
+    node_id          BIGINT,
     level            INTEGER NOT NULL,
     charging_time    INTEGER NOT NULL,
     discharging_time INTEGER NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE batteries
 -- Visitor table
 CREATE TABLE visitors
 (
-    id         UUID PRIMARY KEY,
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ip         INET UNIQUE
@@ -39,7 +39,7 @@ CREATE TABLE visitors
 -- Student table
 CREATE TABLE students
 (
-    id         BIGINT PRIMARY KEY GENERATED always AS IDENTITY,
+    id         BIGSERIAL PRIMARY KEY,
     visitor_id UUID UNIQUE,
     grade      INTEGER NOT NULL,
     class      INTEGER NOT NULL,
@@ -55,8 +55,8 @@ CREATE TYPE entry_logs_type AS ENUM ('ENTERED', 'LEFT');
 -- EntryLog table
 CREATE TABLE entry_logs
 (
-    id         BIGINT PRIMARY KEY GENERATED always AS IDENTITY,
-    node_id    VARCHAR(255),
+    id         BIGSERIAL PRIMARY KEY,
+    node_id    BIGINT,
     visitor_id UUID,
     TYPE       entry_logs_type NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -70,8 +70,8 @@ CREATE TABLE entry_logs
 -- FoodStallLog table
 CREATE TABLE food_stall_logs
 (
-    id         BIGINT PRIMARY KEY GENERATED always AS IDENTITY,
-    node_id    VARCHAR(255),
+    id         BIGSERIAL PRIMARY KEY,
+    node_id    BIGINT,
     visitor_id UUID,
     quantity   INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -85,8 +85,8 @@ CREATE TABLE food_stall_logs
 -- ExhibitionLog table
 CREATE TABLE exhibition_logs
 (
-    id         BIGINT PRIMARY KEY GENERATED always AS IDENTITY,
-    node_id    VARCHAR(255),
+    id         BIGSERIAL PRIMARY KEY,
+    node_id    BIGINT,
     visitor_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

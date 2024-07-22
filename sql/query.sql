@@ -14,16 +14,29 @@ LIMIT
 
 -- name: CreateVisitor :one
 INSERT INTO visitors
-    (id, ip)
+    (ip)
 VALUES
-    (gen_random_uuid(), $1)
+    ($1)
 RETURNING
     *;
+
+-- name: UpdateBattery :exec
+INSERT INTO batteries
+    (node_id, level, charging_time, discharging_time, charging, updated_at)
+VALUES
+    ($1, $2, $3, $4, $5, now());
 
 -- name: GetNodeById :one
 SELECT * FROM nodes
 WHERE
     id = $1
+LIMIT
+    1;
+
+-- name: GetNodeByKey :one
+SELECT * FROM nodes
+WHERE
+    key = $1
 LIMIT
     1;
 

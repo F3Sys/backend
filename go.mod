@@ -16,6 +16,7 @@ require (
 	github.com/jackc/pgx-gofrs-uuid v0.0.0-20230224015001-1d428863c2e2 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
+	github.com/matthewhartstonge/argon2 v1.0.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/rs/zerolog v1.33.0 // indirect

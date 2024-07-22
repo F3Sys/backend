@@ -22,7 +22,7 @@ tmp/
 .vscode
 .idea
 
-# .env file
+# .env_test file
 .env
 
 # Project build

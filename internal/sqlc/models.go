@@ -99,7 +99,7 @@ func (ns NullNodeType) Value() (driver.Value, error) {
 
 type Battery struct {
 	ID              int64
-	NodeID          pgtype.Text
+	NodeID          pgtype.Int8
 	Level           int32
 	ChargingTime    int32
 	DischargingTime int32
@@ -110,7 +110,7 @@ type Battery struct {
 
 type EntryLog struct {
 	ID        int64
-	NodeID    pgtype.Text
+	NodeID    pgtype.Int8
 	VisitorID pgtype.UUID
 	Type      EntryLogsType
 	CreatedAt pgtype.Timestamp
@@ -119,7 +119,7 @@ type EntryLog struct {
 
 type ExhibitionLog struct {
 	ID        int64
-	NodeID    pgtype.Text
+	NodeID    pgtype.Int8
 	VisitorID pgtype.UUID
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
@@ -127,7 +127,7 @@ type ExhibitionLog struct {
 
 type FoodStallLog struct {
 	ID        int64
-	NodeID    pgtype.Text
+	NodeID    pgtype.Int8
 	VisitorID pgtype.UUID
 	Quantity  int32
 	CreatedAt pgtype.Timestamp
@@ -135,8 +135,8 @@ type FoodStallLog struct {
 }
 
 type Node struct {
-	ID        string
-	Password  pgtype.Text
+	ID        int64
+	Key       pgtype.Text
 	Name      string
 	Type      NodeType
 	Price     int32
