@@ -20,11 +20,22 @@ VALUES
 RETURNING
     *;
 
--- name: UpdateBattery :exec
+-- name: CreateBattery :exec
 INSERT INTO batteries
     (node_id, level, charging_time, discharging_time, charging, updated_at)
 VALUES
     ($1, $2, $3, $4, $5, now());
+
+-- name: UpdateBattery :exec
+UPDATE batteries
+SET
+    level = coalesce(sqlc.narg('level'), level),
+    charging_time = coalesce(sqlc.narg('charging_time'), charging_time),
+    discharging_time = coalesce(sqlc.narg('discharging_time'), discharging_time),
+    charging = coalesce(sqlc.narg('charging'), charging),
+    updated_at = sqlc.arg('id')
+WHERE
+    node_id = sqlc.arg('node_id');
 
 -- name: GetNodeById :one
 SELECT * FROM nodes

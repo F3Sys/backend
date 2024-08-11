@@ -12,6 +12,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createBattery = `-- name: CreateBattery :exec
+INSERT INTO batteries
+    (node_id, level, charging_time, discharging_time, charging, updated_at)
+VALUES
+    ($1, $2, $3, $4, $5, now())
+`
+
+type CreateBatteryParams struct {
+	NodeID          pgtype.Int8
+	Level           pgtype.Int4
+	ChargingTime    pgtype.Int4
+	DischargingTime pgtype.Int4
+	Charging        pgtype.Bool
+}
+
+func (q *Queries) CreateBattery(ctx context.Context, arg CreateBatteryParams) error {
+	_, err := q.db.Exec(ctx, createBattery,
+		arg.NodeID,
+		arg.Level,
+		arg.ChargingTime,
+		arg.DischargingTime,
+		arg.Charging,
+	)
+	return err
+}
+
 const createEntryLog = `-- name: CreateEntryLog :exec
 INSERT INTO entry_logs
     (node_id, visitor_id, type)
@@ -200,27 +226,34 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, 
 }
 
 const updateBattery = `-- name: UpdateBattery :exec
-INSERT INTO batteries
-    (node_id, level, charging_time, discharging_time, charging, updated_at)
-VALUES
-    ($1, $2, $3, $4, $5, now())
+UPDATE batteries
+SET
+    level = coalesce($1, level),
+    charging_time = coalesce($2, charging_time),
+    discharging_time = coalesce($3, discharging_time),
+    charging = coalesce($4, charging),
+    updated_at = $5
+WHERE
+    node_id = $6
 `
 
 type UpdateBatteryParams struct {
+	Level           pgtype.Int4
+	ChargingTime    pgtype.Int4
+	DischargingTime pgtype.Int4
+	Charging        pgtype.Bool
+	ID              pgtype.Timestamp
 	NodeID          pgtype.Int8
-	Level           int32
-	ChargingTime    int32
-	DischargingTime int32
-	Charging        bool
 }
 
 func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) error {
 	_, err := q.db.Exec(ctx, updateBattery,
-		arg.NodeID,
 		arg.Level,
 		arg.ChargingTime,
 		arg.DischargingTime,
 		arg.Charging,
+		arg.ID,
+		arg.NodeID,
 	)
 	return err
 }

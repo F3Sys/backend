@@ -4,7 +4,7 @@ CREATE TYPE node_type AS ENUM ('ENTRY', 'FOODSTALL', 'EXHIBITION');
 CREATE TABLE nodes
 (
     id         BIGSERIAL PRIMARY KEY,
-    key        VARCHAR(255),
+    key        VARCHAR(255) UNIQUE,
     name       VARCHAR(255) NOT NULL,
     type       node_type NOT NULL,
     price      INTEGER NOT NULL,
@@ -17,10 +17,10 @@ CREATE TABLE batteries
 (
     id               BIGSERIAL PRIMARY KEY,
     node_id          BIGINT,
-    level            INTEGER NOT NULL,
-    charging_time    INTEGER NOT NULL,
-    discharging_time INTEGER NOT NULL,
-    charging         BOOLEAN NOT NULL,
+    level            INTEGER,
+    charging_time    INTEGER,
+    discharging_time INTEGER,
+    charging         BOOLEAN,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE

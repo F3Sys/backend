@@ -100,10 +100,10 @@ func (ns NullNodeType) Value() (driver.Value, error) {
 type Battery struct {
 	ID              int64
 	NodeID          pgtype.Int8
-	Level           int32
-	ChargingTime    int32
-	DischargingTime int32
-	Charging        bool
+	Level           pgtype.Int4
+	ChargingTime    pgtype.Int4
+	DischargingTime pgtype.Int4
+	Charging        pgtype.Bool
 	CreatedAt       pgtype.Timestamp
 	UpdatedAt       pgtype.Timestamp
 }

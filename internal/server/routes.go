@@ -2,11 +2,12 @@ package server
 
 import (
 	sql "backend/internal/sqlc"
+	"net/http"
+	"net/netip"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
-	"net/http"
-	"net/netip"
 )
 
 func (s *Server) RegisterRoutes() http.Handler {
@@ -25,10 +26,11 @@ func (s *Server) RegisterRoutes() http.Handler {
 		},
 	}))
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
+	}))
 
-	e.GET("/", s.HelloWorldHandler)
-
-	e.GET("/health", s.HealthHandler)
+	e.GET("/ping", s.PingHandler)
 
 	e.GET("/visitor", s.VisitorHandler)
 
@@ -43,23 +45,17 @@ func (s *Server) RegisterRoutes() http.Handler {
 		return ok, nil
 	}))
 
+	protected.GET("/ping", s.PingHandler)
+
 	protected.POST("/push", s.NodePushHandler)
 
-	protected.POST("/status", s.NodeStatusHandler)
+	protected.PATCH("/status", s.NodeStatusHandler)
 
 	return e
 }
 
-func (s *Server) HelloWorldHandler(c echo.Context) error {
-	resp := map[string]string{
-		"message": "Hello World",
-	}
-
-	return c.JSON(http.StatusOK, resp)
-}
-
-func (s *Server) HealthHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, s.DB.Health())
+func (s *Server) PingHandler(c echo.Context) error {
+	return c.String(http.StatusOK, "pong")
 }
 
 func (s *Server) VisitorHandler(c echo.Context) error {
@@ -82,8 +78,8 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 }
 
 type Push struct {
-	visitorUUID string `query:"visitor_uuid"`
-	quantity    int    `query:"quantity"`
+	VisitorUUID string `json:"visitor_uuid"`
+	Quantity    int    `json:"quantity"`
 }
 
 func (s *Server) NodePushHandler(c echo.Context) error {
@@ -95,7 +91,7 @@ func (s *Server) NodePushHandler(c echo.Context) error {
 
 	node := c.Get("node").(*sql.Node)
 
-	err = s.DB.PushNode(int(node.ID), push.visitorUUID, push.quantity)
+	err = s.DB.PushNode(int(node.ID), push.VisitorUUID, push.Quantity)
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -104,10 +100,10 @@ func (s *Server) NodePushHandler(c echo.Context) error {
 }
 
 type Status struct {
-	charging        bool `query:"charging"`
-	chargingTime    int  `query:"charging_time"`
-	dischargingTime int  `query:"discharging_time"`
-	level           int  `query:"level"`
+	Charging        bool `json:"charging"`
+	ChargingTime    int  `json:"charging_time"`
+	DischargingTime int  `json:"discharging_time"`
+	Level           int  `json:"level"`
 }
 
 func (s *Server) NodeStatusHandler(c echo.Context) error {
@@ -119,7 +115,7 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 
 	node := c.Get("node").(*sql.Node)
 
-	err = s.DB.StatusNode(int(node.ID), status.charging, status.chargingTime, status.dischargingTime, status.level)
+	err = s.DB.StatusNode(node.ID, int32(status.Level), int32(status.ChargingTime), int32(status.DischargingTime), status.Charging)
 	if err != nil {
 		return echo.ErrBadRequest
 	}

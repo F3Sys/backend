@@ -29,7 +29,7 @@ type Service interface {
 
 	PushNode(nodeID int, visitorUUID string, quantity int) error
 
-	StatusNode(nodeID int, charging bool, chargingTime int, dischargingTime int, level int) error
+	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
 }
 
 type DbService struct {
@@ -207,10 +207,7 @@ func (s *DbService) PushNode(nodeID int, visitorUUID string, quantity int) error
 
 	case sql.NodeTypeFOODSTALL:
 		err := queries.CreateFoodStallLog(ctx, sql.CreateFoodStallLogParams{
-			NodeID: pgtype.Int8{
-				Int64: nodeById.ID,
-				Valid: true,
-			},
+			NodeID:    pgtype.Int8{Int64: nodeById.ID, Valid: true},
 			VisitorID: visitorById.ID,
 			Quantity:  int32(quantity),
 		})
@@ -227,10 +224,7 @@ func (s *DbService) PushNode(nodeID int, visitorUUID string, quantity int) error
 
 	case sql.NodeTypeEXHIBITION:
 		err := queries.CreateExhibitionLog(ctx, sql.CreateExhibitionLogParams{
-			NodeID: pgtype.Int8{
-				Int64: nodeById.ID,
-				Valid: true,
-			},
+			NodeID:    pgtype.Int8{Int64: nodeById.ID, Valid: true},
 			VisitorID: visitorById.ID,
 		})
 		if err != nil {
@@ -249,7 +243,7 @@ func (s *DbService) PushNode(nodeID int, visitorUUID string, quantity int) error
 	return nil
 }
 
-func (s *DbService) StatusNode(nodeID int, charging bool, chargingTime int, dischargingTime int, level int) error {
+func (s *DbService) StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -262,14 +256,11 @@ func (s *DbService) StatusNode(nodeID int, charging bool, chargingTime int, disc
 	queries := sql.New(q)
 
 	err = queries.UpdateBattery(ctx, sql.UpdateBatteryParams{
-		NodeID: pgtype.Int8{
-			Int64: int64(nodeID),
-			Valid: true,
-		},
-		Level:           int32(level),
-		ChargingTime:    int32(chargingTime),
-		DischargingTime: int32(dischargingTime),
-		Charging:        charging,
+		NodeID:          pgtype.Int8{Int64: nodeID, Valid: true},
+		Level:           pgtype.Int4{Int32: level, Valid: true},
+		ChargingTime:    pgtype.Int4{Int32: chargingTime, Valid: true},
+		DischargingTime: pgtype.Int4{Int32: dischargingTime, Valid: true},
+		Charging:        pgtype.Bool{Bool: charging, Valid: true},
 	})
 	if err != nil {
 		return err
