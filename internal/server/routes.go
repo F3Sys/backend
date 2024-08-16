@@ -14,12 +14,14 @@ func (s *Server) RegisterRoutes() http.Handler {
 	e := echo.New()
 	e.IPExtractor = echo.ExtractIPFromXFFHeader()
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
-		LogURI:    true,
-		LogStatus: true,
+		LogURI:      true,
+		LogStatus:   true,
+		LogRemoteIP: true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			log.Info().
 				Str("URI", v.URI).
 				Int("status", v.Status).
+				Str("remote_ip", v.RemoteIP).
 				Msg("request")
 
 			return nil
@@ -47,6 +49,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	protected.GET("/ping", s.PingHandler)
 
+	protected.GET("/info", s.NodeInfoHandler)
+
 	protected.POST("/push", s.NodePushHandler)
 
 	protected.PATCH("/status", s.NodeStatusHandler)
@@ -60,7 +64,6 @@ func (s *Server) PingHandler(c echo.Context) error {
 
 func (s *Server) VisitorHandler(c echo.Context) error {
 	ip := c.RealIP()
-	//ip := "127.0.2.1"
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
 		log.Info().Err(err).Send()
@@ -78,12 +81,13 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 }
 
 type Push struct {
-	VisitorUUID string `json:"visitor_uuid"`
+	VisitorUUID string `json:"uuid"`
 	Quantity    int    `json:"quantity"`
 }
 
 func (s *Server) NodePushHandler(c echo.Context) error {
 	var push Push
+
 	err := c.Bind(&push)
 	if err != nil {
 		return echo.ErrBadRequest
@@ -91,7 +95,7 @@ func (s *Server) NodePushHandler(c echo.Context) error {
 
 	node := c.Get("node").(*sql.Node)
 
-	err = s.DB.PushNode(int(node.ID), push.VisitorUUID, push.Quantity)
+	err = s.DB.PushNode(node, push.VisitorUUID, push.Quantity)
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -121,4 +125,14 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusOK)
+}
+
+func (s *Server) NodeInfoHandler(c echo.Context) error {
+	node := c.Get("node").(*sql.Node)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"name":  node.Name,
+		"type":  node.Type,
+		"price": node.Price,
+	})
 }

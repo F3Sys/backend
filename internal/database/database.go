@@ -1,16 +1,18 @@
 package database
 
 import (
-	"backend/internal/sqlc"
+	sql "backend/internal/sqlc"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"net/netip"
 	"os"
 	"time"
+
+	"github.com/gofrs/uuid/v5"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
@@ -27,7 +29,7 @@ type Service interface {
 
 	Visitor(ip netip.Addr) (string, error)
 
-	PushNode(nodeID int, visitorUUID string, quantity int) error
+	PushNode(node *sql.Node, visitorUUID string, quantity int) error
 
 	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
 }
@@ -146,7 +148,7 @@ func (s *DbService) Visitor(ip netip.Addr) (string, error) {
 	return fmt.Sprintf("%x", visitorByIp.ID.Bytes), nil
 }
 
-func (s *DbService) PushNode(nodeID int, visitorUUID string, quantity int) error {
+func (s *DbService) PushNode(node *sql.Node, visitorUUID string, quantity int) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -158,22 +160,21 @@ func (s *DbService) PushNode(nodeID int, visitorUUID string, quantity int) error
 	}
 	queries := sql.New(q)
 
+	visitorUUIDtype, err := uuid.FromString(visitorUUID)
+	if err != nil {
+		return err
+	}
+
 	// Check if visitor exists
-	visitorById, err := queries.GetVisitorById(ctx, pgtype.UUID{Bytes: [16]byte([]byte(visitorUUID)), Valid: true})
+	visitorById, err := queries.GetVisitorById(ctx, pgtype.UUID{Bytes: [16]byte(visitorUUIDtype.Bytes()), Valid: true})
 	if err != nil {
 		return err
 	}
 
-	// Get type of node
-	nodeById, err := queries.GetNodeById(ctx, int64(nodeID))
-	if err != nil {
-		return err
-	}
-
-	switch nodeById.Type {
+	switch node.Type {
 	case sql.NodeTypeENTRY:
 		var entryLogType sql.EntryLogsType
-		entryLog, err := queries.GetEntryLogByNodeId(ctx, pgtype.Int8{Int64: nodeById.ID, Valid: true})
+		entryLog, err := queries.GetEntryLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
 		if errors.Is(err, pgx.ErrNoRows) {
 			entryLogType = sql.EntryLogsTypeENTERED
 		} else if err != nil {
@@ -188,7 +189,7 @@ func (s *DbService) PushNode(nodeID int, visitorUUID string, quantity int) error
 
 		err = queries.CreateEntryLog(ctx, sql.CreateEntryLogParams{
 			NodeID: pgtype.Int8{
-				Int64: nodeById.ID,
+				Int64: node.ID,
 				Valid: true,
 			},
 			VisitorID: visitorById.ID,
@@ -207,7 +208,7 @@ func (s *DbService) PushNode(nodeID int, visitorUUID string, quantity int) error
 
 	case sql.NodeTypeFOODSTALL:
 		err := queries.CreateFoodStallLog(ctx, sql.CreateFoodStallLogParams{
-			NodeID:    pgtype.Int8{Int64: nodeById.ID, Valid: true},
+			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
 			VisitorID: visitorById.ID,
 			Quantity:  int32(quantity),
 		})
@@ -224,7 +225,7 @@ func (s *DbService) PushNode(nodeID int, visitorUUID string, quantity int) error
 
 	case sql.NodeTypeEXHIBITION:
 		err := queries.CreateExhibitionLog(ctx, sql.CreateExhibitionLogParams{
-			NodeID:    pgtype.Int8{Int64: nodeById.ID, Valid: true},
+			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
 			VisitorID: visitorById.ID,
 		})
 		if err != nil {
