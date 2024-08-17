@@ -51,17 +51,13 @@ WHERE
 LIMIT
     1;
 
--- name: GetEntryLogByNodeId :one
-SELECT DISTINCT ON (node_id)
-    *
-FROM
-    entry_logs
+-- name: GetEntryLogByVisitorId :one
+SELECT * FROM entry_logs
 WHERE
-    node_id = $1
+    visitor_id = $1
 ORDER BY
-    created_at DESC
-LIMIT
-    1;
+    id DESC
+LIMIT 1;
 
 -- name: CreateEntryLog :exec
 INSERT INTO entry_logs

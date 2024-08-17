@@ -174,17 +174,20 @@ func (s *DbService) PushNode(node *sql.Node, visitorUUID string, quantity int) e
 	switch node.Type {
 	case sql.NodeTypeENTRY:
 		var entryLogType sql.EntryLogsType
-		entryLog, err := queries.GetEntryLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
-		if errors.Is(err, pgx.ErrNoRows) {
-			entryLogType = sql.EntryLogsTypeENTERED
-		} else if err != nil {
-			return err
-		}
+		entryLog, err := queries.GetEntryLogByVisitorId(ctx, visitorById.ID)
 
-		if entryLog.Type == sql.EntryLogsTypeENTERED {
-			entryLogType = sql.EntryLogsTypeLEFT
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				entryLogType = sql.EntryLogsTypeENTERED
+			} else {
+				return err
+			}
 		} else {
-			entryLogType = sql.EntryLogsTypeENTERED
+			if entryLog.Type == sql.EntryLogsTypeENTERED {
+				entryLogType = sql.EntryLogsTypeLEFT
+			} else {
+				entryLogType = sql.EntryLogsTypeENTERED
+			}
 		}
 
 		err = queries.CreateEntryLog(ctx, sql.CreateEntryLogParams{
