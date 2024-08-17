@@ -13,10 +13,15 @@ import (
 )
 
 const createBattery = `-- name: CreateBattery :exec
-INSERT INTO batteries
-    (node_id, level, charging_time, discharging_time, charging, updated_at)
-VALUES
-    ($1, $2, $3, $4, $5, now())
+INSERT INTO batteries (
+        node_id,
+        level,
+        charging_time,
+        discharging_time,
+        charging,
+        updated_at
+    )
+VALUES ($1, $2, $3, $4, $5, now())
 `
 
 type CreateBatteryParams struct {
@@ -39,10 +44,8 @@ func (q *Queries) CreateBattery(ctx context.Context, arg CreateBatteryParams) er
 }
 
 const createEntryLog = `-- name: CreateEntryLog :exec
-INSERT INTO entry_logs
-    (node_id, visitor_id, type)
-VALUES
-    ($1, $2, $3)
+INSERT INTO entry_logs (node_id, visitor_id, type)
+VALUES ($1, $2, $3)
 `
 
 type CreateEntryLogParams struct {
@@ -57,10 +60,8 @@ func (q *Queries) CreateEntryLog(ctx context.Context, arg CreateEntryLogParams) 
 }
 
 const createExhibitionLog = `-- name: CreateExhibitionLog :exec
-INSERT INTO exhibition_logs
-    (node_id, visitor_id)
-VALUES
-    ($1, $2)
+INSERT INTO exhibition_logs (node_id, visitor_id)
+VALUES ($1, $2)
 `
 
 type CreateExhibitionLogParams struct {
@@ -74,10 +75,8 @@ func (q *Queries) CreateExhibitionLog(ctx context.Context, arg CreateExhibitionL
 }
 
 const createFoodStallLog = `-- name: CreateFoodStallLog :exec
-INSERT INTO food_stall_logs
-    (node_id, visitor_id, quantity)
-VALUES
-    ($1, $2, $3)
+INSERT INTO food_stall_logs (node_id, visitor_id, quantity)
+VALUES ($1, $2, $3)
 `
 
 type CreateFoodStallLogParams struct {
@@ -92,12 +91,9 @@ func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLog
 }
 
 const createVisitor = `-- name: CreateVisitor :one
-INSERT INTO visitors
-    (ip)
-VALUES
-    ($1)
-RETURNING
-    id, created_at, updated_at, ip
+INSERT INTO visitors (ip)
+VALUES ($1)
+RETURNING id, created_at, updated_at, ip
 `
 
 func (q *Queries) CreateVisitor(ctx context.Context, ip *netip.Addr) (Visitor, error) {
@@ -113,11 +109,10 @@ func (q *Queries) CreateVisitor(ctx context.Context, ip *netip.Addr) (Visitor, e
 }
 
 const getEntryLogByVisitorId = `-- name: GetEntryLogByVisitorId :one
-SELECT id, node_id, visitor_id, type, created_at, updated_at FROM entry_logs
-WHERE
-    visitor_id = $1
-ORDER BY
-    id DESC
+SELECT id, node_id, visitor_id, type, created_at, updated_at
+FROM entry_logs
+WHERE visitor_id = $1
+ORDER BY id DESC
 LIMIT 1
 `
 
@@ -136,11 +131,10 @@ func (q *Queries) GetEntryLogByVisitorId(ctx context.Context, visitorID pgtype.U
 }
 
 const getNodeById = `-- name: GetNodeById :one
-SELECT id, key, name, type, price, created_at, updated_at FROM nodes
-WHERE
-    id = $1
-LIMIT
-    1
+SELECT id, key, name, type, price, created_at, updated_at
+FROM nodes
+WHERE id = $1
+LIMIT 1
 `
 
 func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
@@ -159,11 +153,10 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 }
 
 const getNodeByKey = `-- name: GetNodeByKey :one
-SELECT id, key, name, type, price, created_at, updated_at FROM nodes
-WHERE
-    key = $1
-LIMIT
-    1
+SELECT id, key, name, type, price, created_at, updated_at
+FROM nodes
+WHERE key = $1
+LIMIT 1
 `
 
 func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, error) {
@@ -182,11 +175,10 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 }
 
 const getVisitorById = `-- name: GetVisitorById :one
-SELECT id, created_at, updated_at, ip FROM visitors
-WHERE
-    id = $1
-LIMIT
-    1
+SELECT id, created_at, updated_at, ip
+FROM visitors
+WHERE id = $1
+LIMIT 1
 `
 
 func (q *Queries) GetVisitorById(ctx context.Context, id pgtype.UUID) (Visitor, error) {
@@ -202,11 +194,10 @@ func (q *Queries) GetVisitorById(ctx context.Context, id pgtype.UUID) (Visitor, 
 }
 
 const getVisitorByIp = `-- name: GetVisitorByIp :one
-SELECT id, created_at, updated_at, ip FROM visitors
-WHERE
-    ip = $1
-LIMIT
-    1
+SELECT id, created_at, updated_at, ip
+FROM visitors
+WHERE ip = $1
+LIMIT 1
 `
 
 func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, error) {
@@ -223,14 +214,12 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, 
 
 const updateBattery = `-- name: UpdateBattery :exec
 UPDATE batteries
-SET
-    level = coalesce($1, level),
+SET level = coalesce($1, level),
     charging_time = coalesce($2, charging_time),
     discharging_time = coalesce($3, discharging_time),
     charging = coalesce($4, charging),
     updated_at = $5
-WHERE
-    node_id = $6
+WHERE node_id = $6
 `
 
 type UpdateBatteryParams struct {
