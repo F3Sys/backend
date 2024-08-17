@@ -113,14 +113,11 @@ func (q *Queries) CreateVisitor(ctx context.Context, ip *netip.Addr) (Visitor, e
 }
 
 const getEntryLogByVisitorId = `-- name: GetEntryLogByVisitorId :one
-SELECT
-    id, node_id, visitor_id, type, created_at, updated_at
-FROM
-    entry_logs
+SELECT id, node_id, visitor_id, type, created_at, updated_at FROM entry_logs
 WHERE
     visitor_id = $1
 ORDER BY
-    created_at DESC
+    id DESC
 LIMIT 1
 `
 
