@@ -4,6 +4,8 @@ import (
 	sql "backend/internal/sqlc"
 	"net/http"
 	"net/netip"
+	"os"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -12,8 +14,12 @@ import (
 )
 
 func Sqids() (*sqids.Sqids, error) {
+	minlength, _ := strconv.Atoi(os.Getenv("SQIDS_MINLENGTH"))
+	alphabet := os.Getenv("SQIDS_ALPHABET")
+
 	sqid, err := sqids.New(sqids.Options{
-		MinLength: 8,
+		MinLength: uint8(minlength),
+		Alphabet:  alphabet,
 	})
 	if err != nil {
 		return nil, err
