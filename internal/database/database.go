@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gofrs/uuid/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,11 +26,13 @@ type Service interface {
 
 	Password(key string) (*sql.Node, bool, error)
 
-	Visitor(ip netip.Addr) (string, error)
+	Visitor(ip netip.Addr) (int64, error)
 
-	PushNode(node *sql.Node, visitorUUID string, quantity int) error
+	PushNode(node *sql.Node, visitorID int64, quantity int) error
 
 	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
+
+	IsVisitorFirst(visitorID int64) (bool, error)
 }
 
 type DbService struct {
@@ -113,7 +114,7 @@ func (s *DbService) Password(key string) (*sql.Node, bool, error) {
 	return &nodeByKey, true, nil
 }
 
-func (s *DbService) Visitor(ip netip.Addr) (string, error) {
+func (s *DbService) Visitor(ip netip.Addr) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -123,7 +124,7 @@ func (s *DbService) Visitor(ip netip.Addr) (string, error) {
 		}
 	}(q, ctx)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	queries := sql.New(q)
 
@@ -133,22 +134,22 @@ func (s *DbService) Visitor(ip netip.Addr) (string, error) {
 		// Create a new visitor
 		visitorByIp, err := queries.CreateVisitor(ctx, &ip)
 		if err != nil {
-			return "", err
+			return 0, err
 		}
 		err = q.Commit(ctx)
 		if err != nil {
-			return "", err
+			return 0, err
 		}
 
-		return fmt.Sprintf("%x", visitorByIp.ID.Bytes), nil
+		return visitorByIp.ID, nil
 	} else if err != nil {
-		return "", err
+		return 0, err
 	}
 
-	return fmt.Sprintf("%x", visitorByIp.ID.Bytes), nil
+	return visitorByIp.ID, nil
 }
 
-func (s *DbService) PushNode(node *sql.Node, visitorUUID string, quantity int) error {
+func (s *DbService) PushNode(node *sql.Node, visitorID int64, quantity int) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -160,13 +161,8 @@ func (s *DbService) PushNode(node *sql.Node, visitorUUID string, quantity int) e
 	}
 	queries := sql.New(q)
 
-	visitorUUIDtype, err := uuid.FromString(visitorUUID)
-	if err != nil {
-		return err
-	}
-
 	// Check if visitor exists
-	visitorById, err := queries.GetVisitorById(ctx, pgtype.UUID{Bytes: [16]byte(visitorUUIDtype.Bytes()), Valid: true})
+	visitorById, err := queries.GetVisitorById(ctx, visitorID)
 	if err != nil {
 		return err
 	}
@@ -174,11 +170,20 @@ func (s *DbService) PushNode(node *sql.Node, visitorUUID string, quantity int) e
 	switch node.Type {
 	case sql.NodeTypeENTRY:
 		var entryLogType sql.EntryLogsType
-		entryLog, err := queries.GetEntryLogByVisitorId(ctx, visitorById.ID)
+		entryLog, err := queries.GetEntryLogByVisitorId(ctx, pgtype.Int8{Int64: visitorById.ID, Valid: true})
 
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
+				// First time entering
 				entryLogType = sql.EntryLogsTypeENTERED
+
+				err := queries.UpdateVisitorQuantity(ctx, sql.UpdateVisitorQuantityParams{
+					Quantity: int32(quantity),
+					ID:       visitorById.ID,
+				})
+				if err != nil {
+					return err
+				}
 			} else {
 				return err
 			}
@@ -195,8 +200,11 @@ func (s *DbService) PushNode(node *sql.Node, visitorUUID string, quantity int) e
 				Int64: node.ID,
 				Valid: true,
 			},
-			VisitorID: visitorById.ID,
-			Type:      entryLogType,
+			VisitorID: pgtype.Int8{
+				Int64: visitorById.ID,
+				Valid: true,
+			},
+			Type: entryLogType,
 		})
 		if err != nil {
 			return err
@@ -212,7 +220,7 @@ func (s *DbService) PushNode(node *sql.Node, visitorUUID string, quantity int) e
 	case sql.NodeTypeFOODSTALL:
 		err := queries.CreateFoodStallLog(ctx, sql.CreateFoodStallLogParams{
 			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
-			VisitorID: visitorById.ID,
+			VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
 			Quantity:  int32(quantity),
 		})
 		if err != nil {
@@ -229,7 +237,7 @@ func (s *DbService) PushNode(node *sql.Node, visitorUUID string, quantity int) e
 	case sql.NodeTypeEXHIBITION:
 		err := queries.CreateExhibitionLog(ctx, sql.CreateExhibitionLogParams{
 			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
-			VisitorID: visitorById.ID,
+			VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
 		})
 		if err != nil {
 			return err
@@ -276,4 +284,28 @@ func (s *DbService) StatusNode(nodeID int64, level int32, chargingTime int32, di
 	}
 
 	return nil
+}
+
+func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return false, err
+	}
+	queries := sql.New(q)
+
+	// Check if visitor exists
+	_, err = queries.GetEntryLogByVisitorId(ctx, pgtype.Int8{Int64: visitorID, Valid: true})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	return false, err
 }

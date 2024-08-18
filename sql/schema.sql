@@ -23,7 +23,8 @@ CREATE TABLE batteries (
 );
 -- Visitor table
 CREATE TABLE visitors (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id BIGSERIAL PRIMARY KEY,
+    quantity INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ip INET UNIQUE
@@ -31,7 +32,7 @@ CREATE TABLE visitors (
 -- Student table
 CREATE TABLE students (
     id BIGSERIAL PRIMARY KEY,
-    visitor_id UUID UNIQUE,
+    visitor_id BIGINT UNIQUE,
     grade INTEGER NOT NULL,
     class INTEGER NOT NULL,
     student_id INTEGER NOT NULL,
@@ -45,7 +46,7 @@ CREATE TYPE entry_logs_type AS ENUM ('ENTERED', 'LEFT');
 CREATE TABLE entry_logs (
     id BIGSERIAL PRIMARY KEY,
     node_id BIGINT,
-    visitor_id UUID,
+    visitor_id BIGINT,
     TYPE entry_logs_type NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -57,7 +58,7 @@ CREATE TABLE entry_logs (
 CREATE TABLE food_stall_logs (
     id BIGSERIAL PRIMARY KEY,
     node_id BIGINT,
-    visitor_id UUID,
+    visitor_id BIGINT,
     quantity INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -69,7 +70,7 @@ CREATE TABLE food_stall_logs (
 CREATE TABLE exhibition_logs (
     id BIGSERIAL PRIMARY KEY,
     node_id BIGINT,
-    visitor_id UUID,
+    visitor_id BIGINT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE CASCADE,

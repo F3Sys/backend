@@ -111,7 +111,7 @@ type Battery struct {
 type EntryLog struct {
 	ID        int64
 	NodeID    pgtype.Int8
-	VisitorID pgtype.UUID
+	VisitorID pgtype.Int8
 	Type      EntryLogsType
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
@@ -120,7 +120,7 @@ type EntryLog struct {
 type ExhibitionLog struct {
 	ID        int64
 	NodeID    pgtype.Int8
-	VisitorID pgtype.UUID
+	VisitorID pgtype.Int8
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }
@@ -128,7 +128,7 @@ type ExhibitionLog struct {
 type FoodStallLog struct {
 	ID        int64
 	NodeID    pgtype.Int8
-	VisitorID pgtype.UUID
+	VisitorID pgtype.Int8
 	Quantity  int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
@@ -146,7 +146,7 @@ type Node struct {
 
 type Student struct {
 	ID        int64
-	VisitorID pgtype.UUID
+	VisitorID pgtype.Int8
 	Grade     int32
 	Class     int32
 	StudentID int32
@@ -155,7 +155,8 @@ type Student struct {
 }
 
 type Visitor struct {
-	ID        pgtype.UUID
+	ID        int64
+	Quantity  int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 	Ip        *netip.Addr

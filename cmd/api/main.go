@@ -3,9 +3,10 @@ package main
 import (
 	"backend/internal/server"
 	"fmt"
+	"os"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
 )
 
 func main() {

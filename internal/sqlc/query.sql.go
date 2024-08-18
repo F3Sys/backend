@@ -50,7 +50,7 @@ VALUES ($1, $2, $3)
 
 type CreateEntryLogParams struct {
 	NodeID    pgtype.Int8
-	VisitorID pgtype.UUID
+	VisitorID pgtype.Int8
 	Type      EntryLogsType
 }
 
@@ -66,7 +66,7 @@ VALUES ($1, $2)
 
 type CreateExhibitionLogParams struct {
 	NodeID    pgtype.Int8
-	VisitorID pgtype.UUID
+	VisitorID pgtype.Int8
 }
 
 func (q *Queries) CreateExhibitionLog(ctx context.Context, arg CreateExhibitionLogParams) error {
@@ -81,7 +81,7 @@ VALUES ($1, $2, $3)
 
 type CreateFoodStallLogParams struct {
 	NodeID    pgtype.Int8
-	VisitorID pgtype.UUID
+	VisitorID pgtype.Int8
 	Quantity  int32
 }
 
@@ -93,7 +93,7 @@ func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLog
 const createVisitor = `-- name: CreateVisitor :one
 INSERT INTO visitors (ip)
 VALUES ($1)
-RETURNING id, created_at, updated_at, ip
+RETURNING id, quantity, created_at, updated_at, ip
 `
 
 func (q *Queries) CreateVisitor(ctx context.Context, ip *netip.Addr) (Visitor, error) {
@@ -101,6 +101,7 @@ func (q *Queries) CreateVisitor(ctx context.Context, ip *netip.Addr) (Visitor, e
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
+		&i.Quantity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Ip,
@@ -116,7 +117,7 @@ ORDER BY id DESC
 LIMIT 1
 `
 
-func (q *Queries) GetEntryLogByVisitorId(ctx context.Context, visitorID pgtype.UUID) (EntryLog, error) {
+func (q *Queries) GetEntryLogByVisitorId(ctx context.Context, visitorID pgtype.Int8) (EntryLog, error) {
 	row := q.db.QueryRow(ctx, getEntryLogByVisitorId, visitorID)
 	var i EntryLog
 	err := row.Scan(
@@ -175,17 +176,18 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 }
 
 const getVisitorById = `-- name: GetVisitorById :one
-SELECT id, created_at, updated_at, ip
+SELECT id, quantity, created_at, updated_at, ip
 FROM visitors
 WHERE id = $1
 LIMIT 1
 `
 
-func (q *Queries) GetVisitorById(ctx context.Context, id pgtype.UUID) (Visitor, error) {
+func (q *Queries) GetVisitorById(ctx context.Context, id int64) (Visitor, error) {
 	row := q.db.QueryRow(ctx, getVisitorById, id)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
+		&i.Quantity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Ip,
@@ -194,7 +196,7 @@ func (q *Queries) GetVisitorById(ctx context.Context, id pgtype.UUID) (Visitor, 
 }
 
 const getVisitorByIp = `-- name: GetVisitorByIp :one
-SELECT id, created_at, updated_at, ip
+SELECT id, quantity, created_at, updated_at, ip
 FROM visitors
 WHERE ip = $1
 LIMIT 1
@@ -205,6 +207,7 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, 
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
+		&i.Quantity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Ip,
@@ -240,5 +243,21 @@ func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) er
 		arg.ID,
 		arg.NodeID,
 	)
+	return err
+}
+
+const updateVisitorQuantity = `-- name: UpdateVisitorQuantity :exec
+UPDATE visitors
+SET quantity = $1
+WHERE id = $2
+`
+
+type UpdateVisitorQuantityParams struct {
+	Quantity int32
+	ID       int64
+}
+
+func (q *Queries) UpdateVisitorQuantity(ctx context.Context, arg UpdateVisitorQuantityParams) error {
+	_, err := q.db.Exec(ctx, updateVisitorQuantity, arg.Quantity, arg.ID)
 	return err
 }

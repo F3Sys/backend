@@ -2,11 +2,12 @@ package server
 
 import (
 	"fmt"
-	_ "github.com/joho/godotenv/autoload"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	_ "github.com/joho/godotenv/autoload"
 
 	"backend/internal/database"
 )

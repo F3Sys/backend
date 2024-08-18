@@ -8,7 +8,19 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
+	"github.com/sqids/sqids-go"
 )
+
+func Sqids() (*sqids.Sqids, error) {
+	sqid, err := sqids.New(sqids.Options{
+		MinLength: 8,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return sqid, nil
+}
 
 func (s *Server) RegisterRoutes() http.Handler {
 	e := echo.New()
@@ -51,6 +63,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	protected.GET("/info", s.NodeInfoHandler)
 
+	protected.GET("/visitor/:uuid", s.NodeVisitorLookupHandler)
+
 	protected.POST("/push", s.NodePushHandler)
 
 	protected.PATCH("/status", s.NodeStatusHandler)
@@ -66,22 +80,31 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 	ip := c.RealIP()
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
-		log.Info().Err(err).Send()
-		return echo.ErrBadRequest
+		return echo.ErrInternalServerError
 	}
-	uuid, err := s.DB.Visitor(addr)
+
+	sqid, err := Sqids()
 	if err != nil {
-		log.Info().Err(err).Send()
+		return echo.ErrInternalServerError
+	}
+
+	sqids, err := s.DB.Visitor(addr)
+	if err != nil {
 		return echo.ErrBadRequest
 	}
 
+	visitorSQID, err := sqid.Encode([]uint64{uint64(sqids)})
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+
 	return c.JSON(http.StatusOK, map[string]string{
-		"uuid": uuid,
+		"sqid": visitorSQID,
 	})
 }
 
 type Push struct {
-	VisitorUUID string `json:"uuid"`
+	VisitorSQID string `json:"sqid"`
 	Quantity    int    `json:"quantity"`
 }
 
@@ -93,9 +116,16 @@ func (s *Server) NodePushHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
+	sqid, err := Sqids()
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+
+	pushVisitorID := sqid.Decode(push.VisitorSQID)
+
 	node := c.Get("node").(*sql.Node)
 
-	err = s.DB.PushNode(node, push.VisitorUUID, push.Quantity)
+	err = s.DB.PushNode(node, int64(pushVisitorID[0]), push.Quantity)
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -134,5 +164,34 @@ func (s *Server) NodeInfoHandler(c echo.Context) error {
 		"name":  node.Name,
 		"type":  node.Type,
 		"price": node.Price,
+	})
+}
+
+type VisitorLookup struct {
+	VisitorSQID string `param:"sqid"`
+}
+
+func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
+	var visitorLookup VisitorLookup
+
+	err := c.Bind(&visitorLookup)
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	sqid, err := Sqids()
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+
+	visitorLookupVisitorID := sqid.Decode(visitorLookup.VisitorSQID)
+
+	isFirst, err := s.DB.IsVisitorFirst(int64(visitorLookupVisitorID[0]))
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	return c.JSON(http.StatusOK, map[string]bool{
+		"is_first": isFirst,
 	})
 }

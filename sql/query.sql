@@ -12,6 +12,10 @@ LIMIT 1;
 INSERT INTO visitors (ip)
 VALUES ($1)
 RETURNING *;
+-- name: UpdateVisitorQuantity :exec
+UPDATE visitors
+SET quantity = $1
+WHERE id = $2;
 -- name: CreateBattery :exec
 INSERT INTO batteries (
         node_id,
