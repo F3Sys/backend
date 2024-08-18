@@ -157,7 +157,8 @@ type Student struct {
 type Visitor struct {
 	ID        int64
 	Quantity  int32
+	Random    int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
-	Ip        *netip.Addr
+	Ip        netip.Addr
 }

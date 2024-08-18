@@ -91,17 +91,23 @@ func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLog
 }
 
 const createVisitor = `-- name: CreateVisitor :one
-INSERT INTO visitors (ip)
-VALUES ($1)
-RETURNING id, quantity, created_at, updated_at, ip
+INSERT INTO visitors (ip, random)
+VALUES ($1, $2)
+RETURNING id, quantity, random, created_at, updated_at, ip
 `
 
-func (q *Queries) CreateVisitor(ctx context.Context, ip *netip.Addr) (Visitor, error) {
-	row := q.db.QueryRow(ctx, createVisitor, ip)
+type CreateVisitorParams struct {
+	Ip     netip.Addr
+	Random int32
+}
+
+func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (Visitor, error) {
+	row := q.db.QueryRow(ctx, createVisitor, arg.Ip, arg.Random)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
 		&i.Quantity,
+		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Ip,
@@ -176,7 +182,7 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 }
 
 const getVisitorById = `-- name: GetVisitorById :one
-SELECT id, quantity, created_at, updated_at, ip
+SELECT id, quantity, random, created_at, updated_at, ip
 FROM visitors
 WHERE id = $1
 LIMIT 1
@@ -188,6 +194,7 @@ func (q *Queries) GetVisitorById(ctx context.Context, id int64) (Visitor, error)
 	err := row.Scan(
 		&i.ID,
 		&i.Quantity,
+		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Ip,
@@ -196,18 +203,19 @@ func (q *Queries) GetVisitorById(ctx context.Context, id int64) (Visitor, error)
 }
 
 const getVisitorByIp = `-- name: GetVisitorByIp :one
-SELECT id, quantity, created_at, updated_at, ip
+SELECT id, quantity, random, created_at, updated_at, ip
 FROM visitors
 WHERE ip = $1
 LIMIT 1
 `
 
-func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, error) {
+func (q *Queries) GetVisitorByIp(ctx context.Context, ip netip.Addr) (Visitor, error) {
 	row := q.db.QueryRow(ctx, getVisitorByIp, ip)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
 		&i.Quantity,
+		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Ip,

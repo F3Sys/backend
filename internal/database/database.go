@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"net/netip"
 	"os"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sqids/sqids-go"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
@@ -26,7 +28,7 @@ type Service interface {
 
 	Password(key string) (*sql.Node, bool, error)
 
-	Visitor(ip netip.Addr) (int64, error)
+	Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 
 	PushNode(node *sql.Node, visitorID int64, quantity int) error
 
@@ -114,7 +116,24 @@ func (s *DbService) Password(key string) (*sql.Node, bool, error) {
 	return &nodeByKey, true, nil
 }
 
-func (s *DbService) Visitor(ip netip.Addr) (int64, error) {
+func generateRandom(visitorID int64, sqid *sqids.Sqids) (int32, error) {
+	for {
+		rand := rand.Int32()
+
+		visitorSQID, err := sqid.Encode([]uint64{uint64(visitorID), uint64(rand)})
+		if err != nil {
+			return 0, err
+		}
+
+		if sqid.Decode(visitorSQID)[0] != uint64(visitorID) {
+			continue
+		} else {
+			return rand, nil
+		}
+	}
+}
+
+func (s *DbService) Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -124,29 +143,49 @@ func (s *DbService) Visitor(ip netip.Addr) (int64, error) {
 		}
 	}(q, ctx)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 	queries := sql.New(q)
 
 	// Check if visitor exists with ip
-	visitorByIp, err := queries.GetVisitorByIp(ctx, &ip)
-	if errors.Is(err, pgx.ErrNoRows) {
-		// Create a new visitor
-		visitorByIp, err := queries.CreateVisitor(ctx, &ip)
-		if err != nil {
-			return 0, err
-		}
-		err = q.Commit(ctx)
-		if err != nil {
-			return 0, err
-		}
+	visitorByIp, err := queries.GetVisitorByIp(ctx, ip)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			rand, err := generateRandom(visitorByIp.ID, sqid)
+			if err != nil {
+				return "", err
+			}
 
-		return visitorByIp.ID, nil
-	} else if err != nil {
-		return 0, err
+			// Create a new visitor
+			visitorByIp, err := queries.CreateVisitor(ctx, sql.CreateVisitorParams{
+				Ip:     ip,
+				Random: rand,
+			})
+			if err != nil {
+				return "", err
+			}
+			err = q.Commit(ctx)
+			if err != nil {
+				return "", err
+			}
+
+			visitorSQID, err := sqid.Encode([]uint64{uint64(visitorByIp.ID), uint64(visitorByIp.Random)})
+			if err != nil {
+				return "", err
+			}
+
+			return visitorSQID, nil
+		} else {
+			return "", err
+		}
 	}
 
-	return visitorByIp.ID, nil
+	visitorSQID, err := sqid.Encode([]uint64{uint64(visitorByIp.ID), uint64(visitorByIp.Random)})
+	if err != nil {
+		return "", err
+	}
+
+	return visitorSQID, nil
 }
 
 func (s *DbService) PushNode(node *sql.Node, visitorID int64, quantity int) error {

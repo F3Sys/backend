@@ -9,8 +9,8 @@ FROM visitors
 WHERE id = $1
 LIMIT 1;
 -- name: CreateVisitor :one
-INSERT INTO visitors (ip)
-VALUES ($1)
+INSERT INTO visitors (ip, random)
+VALUES ($1, $2)
 RETURNING *;
 -- name: UpdateVisitorQuantity :exec
 UPDATE visitors

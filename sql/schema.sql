@@ -25,9 +25,10 @@ CREATE TABLE batteries (
 CREATE TABLE visitors (
     id BIGSERIAL PRIMARY KEY,
     quantity INTEGER NOT NULL DEFAULT 1,
+    random INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ip INET UNIQUE
+    ip INET UNIQUE NOT NULL
 );
 -- Student table
 CREATE TABLE students (

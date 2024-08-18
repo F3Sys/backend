@@ -35,11 +35,13 @@ func (s *Server) RegisterRoutes() http.Handler {
 		LogURI:      true,
 		LogStatus:   true,
 		LogRemoteIP: true,
+		LogLatency:  true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			log.Info().
 				Str("URI", v.URI).
 				Int("status", v.Status).
 				Str("remote_ip", v.RemoteIP).
+				Dur("latency", v.Latency).
 				Msg("request")
 
 			return nil
@@ -94,14 +96,9 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	sqids, err := s.DB.Visitor(addr)
+	visitorSQID, err := s.DB.Visitor(addr, sqid)
 	if err != nil {
 		return echo.ErrBadRequest
-	}
-
-	visitorSQID, err := sqid.Encode([]uint64{uint64(sqids)})
-	if err != nil {
-		return echo.ErrInternalServerError
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
