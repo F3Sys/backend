@@ -71,7 +71,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	protected.GET("/info", s.NodeInfoHandler)
 
-	protected.GET("/visitor/:uuid", s.NodeVisitorLookupHandler)
+	protected.GET("/visitor/:sqid", s.NodeVisitorLookupHandler)
 
 	protected.POST("/push", s.NodePushHandler)
 
