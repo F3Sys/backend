@@ -202,6 +202,33 @@ func (q *Queries) GetVisitorById(ctx context.Context, id int64) (Visitor, error)
 	return i, err
 }
 
+const getVisitorByIdAndRandom = `-- name: GetVisitorByIdAndRandom :one
+SELECT id, quantity, random, created_at, updated_at, ip
+FROM visitors
+WHERE id = $1
+    AND random = $2
+LIMIT 1
+`
+
+type GetVisitorByIdAndRandomParams struct {
+	ID     int64
+	Random int32
+}
+
+func (q *Queries) GetVisitorByIdAndRandom(ctx context.Context, arg GetVisitorByIdAndRandomParams) (Visitor, error) {
+	row := q.db.QueryRow(ctx, getVisitorByIdAndRandom, arg.ID, arg.Random)
+	var i Visitor
+	err := row.Scan(
+		&i.ID,
+		&i.Quantity,
+		&i.Random,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Ip,
+	)
+	return i, err
+}
+
 const getVisitorByIp = `-- name: GetVisitorByIp :one
 SELECT id, quantity, random, created_at, updated_at, ip
 FROM visitors

@@ -30,7 +30,7 @@ type Service interface {
 
 	Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 
-	PushNode(node *sql.Node, visitorID int64, quantity int) error
+	PushNode(node *sql.Node, visitorID int64, visitorRand int32, quantity int) error
 
 	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
 
@@ -188,7 +188,7 @@ func (s *DbService) Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
 	return visitorSQID, nil
 }
 
-func (s *DbService) PushNode(node *sql.Node, visitorID int64, quantity int) error {
+func (s *DbService) PushNode(node *sql.Node, visitorID int64, visitorRandom int32, quantity int) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -201,7 +201,10 @@ func (s *DbService) PushNode(node *sql.Node, visitorID int64, quantity int) erro
 	queries := sql.New(q)
 
 	// Check if visitor exists
-	visitorById, err := queries.GetVisitorById(ctx, visitorID)
+	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sql.GetVisitorByIdAndRandomParams{
+		ID:     visitorID,
+		Random: visitorRandom,
+	})
 	if err != nil {
 		return err
 	}

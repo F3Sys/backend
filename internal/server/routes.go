@@ -128,7 +128,7 @@ func (s *Server) NodePushHandler(c echo.Context) error {
 
 	node := c.Get("node").(*sql.Node)
 
-	err = s.DB.PushNode(node, int64(pushVisitorID[0]), push.Quantity)
+	err = s.DB.PushNode(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]), push.Quantity)
 	if err != nil {
 		return echo.ErrBadRequest
 	}

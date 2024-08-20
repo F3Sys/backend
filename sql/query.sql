@@ -8,6 +8,12 @@ SELECT *
 FROM visitors
 WHERE id = $1
 LIMIT 1;
+-- name: GetVisitorByIdAndRandom :one
+SELECT *
+FROM visitors
+WHERE id = $1
+    AND random = $2
+LIMIT 1;
 -- name: CreateVisitor :one
 INSERT INTO visitors (ip, random)
 VALUES ($1, $2)
