@@ -116,23 +116,6 @@ func (s *DbService) Password(key string) (*sql.Node, bool, error) {
 	return &nodeByKey, true, nil
 }
 
-func generateRandom(visitorID int64, sqid *sqids.Sqids) (int32, error) {
-	for {
-		rand := rand.Int32()
-
-		visitorSQID, err := sqid.Encode([]uint64{uint64(visitorID), uint64(rand)})
-		if err != nil {
-			return 0, err
-		}
-
-		if sqid.Decode(visitorSQID)[0] != uint64(visitorID) {
-			continue
-		} else {
-			return rand, nil
-		}
-	}
-}
-
 func (s *DbService) Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
 	ctx := context.Background()
 
@@ -151,10 +134,7 @@ func (s *DbService) Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
 	visitorByIp, err := queries.GetVisitorByIp(ctx, ip)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			rand, err := generateRandom(visitorByIp.ID, sqid)
-			if err != nil {
-				return "", err
-			}
+			rand := rand.Int32()
 
 			// Create a new visitor
 			visitorByIp, err := queries.CreateVisitor(ctx, sql.CreateVisitorParams{
