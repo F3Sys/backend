@@ -30,7 +30,9 @@ type Service interface {
 
 	Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 
-	PushNode(node *sql.Node, visitorID int64, visitorRand int32, quantity int) error
+	PushNode(node *sql.Node, visitorID int64, visitorRand int32, quantity int32) error
+
+	UpdatePushNode(node *sql.Node, id int64, quantity int32) error
 
 	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
 
@@ -174,7 +176,7 @@ func (s *DbService) Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
 	return visitorF3SiD, nil
 }
 
-func (s *DbService) PushNode(node *sql.Node, visitorID int64, visitorRandom int32, quantity int) error {
+func (s *DbService) PushNode(node *sql.Node, visitorID int64, visitorRandom int32, quantity int32) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -206,7 +208,7 @@ func (s *DbService) PushNode(node *sql.Node, visitorID int64, visitorRandom int3
 				entryLogType = sql.EntryLogsTypeENTERED
 
 				err := queries.UpdateVisitorQuantity(ctx, sql.UpdateVisitorQuantityParams{
-					Quantity: int32(quantity),
+					Quantity: quantity,
 					ID:       visitorById.ID,
 				})
 				if err != nil {
@@ -249,7 +251,7 @@ func (s *DbService) PushNode(node *sql.Node, visitorID int64, visitorRandom int3
 		err := queries.CreateFoodStallLog(ctx, sql.CreateFoodStallLogParams{
 			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
 			VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
-			Quantity:  int32(quantity),
+			Quantity:  quantity,
 		})
 		if err != nil {
 			return err
@@ -278,6 +280,38 @@ func (s *DbService) PushNode(node *sql.Node, visitorID int64, visitorRandom int3
 
 		return nil
 
+	}
+
+	return nil
+}
+
+func (s *DbService) UpdatePushNode(node *sql.Node, id int64, quantity int32) error {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return err
+	}
+	queries := sql.New(q)
+
+	if node.Type == sql.NodeTypeFOODSTALL {
+		err = queries.UpdateFoodStallLog(ctx, sql.UpdateFoodStallLogParams{
+			Quantity: quantity,
+			ID:       id,
+		})
+		if err != nil {
+			return err
+		}
+
+		err = q.Commit(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	return nil
@@ -339,12 +373,14 @@ func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 }
 
 type EntryRowLog struct {
+	Id        int64
 	F3SiD     string
 	Type      sql.EntryLogsType
 	CreatedAt time.Time
 }
 
 type FoodstallRawLog struct {
+	Id        int64
 	F3SiD     string
 	Quantity  int32
 	Price     int32
@@ -352,6 +388,7 @@ type FoodstallRawLog struct {
 }
 
 type ExhibitionRowLog struct {
+	Id        int64
 	F3SiD     string
 	CreatedAt time.Time
 }
@@ -382,8 +419,11 @@ func (s *DbService) EntryRow(node *sql.Node, sqid *sqids.Sqids) (*[]EntryRowLog,
 		}
 
 		visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByID.ID), uint64(visitorByID.Random)})
+		if err != nil {
+			return nil, err
+		}
 
-		rowLog = append(rowLog, EntryRowLog{visitorF3SiD, row.Type, row.CreatedAt.Time})
+		rowLog = append(rowLog, EntryRowLog{row.ID, visitorF3SiD, row.Type, row.CreatedAt.Time})
 	}
 
 	return &rowLog, nil
@@ -415,8 +455,11 @@ func (s *DbService) FoodstallRow(node *sql.Node, sqid *sqids.Sqids) (*[]Foodstal
 		}
 
 		visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByID.ID), uint64(visitorByID.Random)})
+		if err != nil {
+			return nil, err
+		}
 
-		rowLog = append(rowLog, FoodstallRawLog{visitorF3SiD, row.Quantity, node.Price, row.CreatedAt.Time})
+		rowLog = append(rowLog, FoodstallRawLog{row.ID, visitorF3SiD, row.Quantity, node.Price, row.CreatedAt.Time})
 	}
 
 	return &rowLog, nil
@@ -448,8 +491,11 @@ func (s *DbService) ExhibitionRow(node *sql.Node, sqid *sqids.Sqids) (*[]Exhibit
 		}
 
 		visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByID.ID), uint64(visitorByID.Random)})
+		if err != nil {
+			return nil, err
+		}
 
-		rowLog = append(rowLog, ExhibitionRowLog{visitorF3SiD, row.CreatedAt.Time})
+		rowLog = append(rowLog, ExhibitionRowLog{row.ID, visitorF3SiD, row.CreatedAt.Time})
 	}
 
 	return &rowLog, nil

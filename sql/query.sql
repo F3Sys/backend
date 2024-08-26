@@ -20,7 +20,8 @@ VALUES ($1, $2)
 RETURNING *;
 -- name: UpdateVisitorQuantity :exec
 UPDATE visitors
-SET quantity = $1
+SET quantity = $1,
+    updated_at = now()
 WHERE id = $2;
 -- name: CreateBattery :exec
 INSERT INTO batteries (
@@ -83,3 +84,8 @@ FROM exhibition_logs
 WHERE node_id = $1
 ORDER BY id DESC
 LIMIT 10;
+-- name: UpdateFoodStallLog :exec
+UPDATE food_stall_logs
+SET quantity = $1,
+    updated_at = now()
+WHERE id = $2;

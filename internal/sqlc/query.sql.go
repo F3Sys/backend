@@ -385,9 +385,27 @@ func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) er
 	return err
 }
 
+const updateFoodStallLog = `-- name: UpdateFoodStallLog :exec
+UPDATE food_stall_logs
+SET quantity = $1,
+    updated_at = now()
+WHERE id = $2
+`
+
+type UpdateFoodStallLogParams struct {
+	Quantity int32
+	ID       int64
+}
+
+func (q *Queries) UpdateFoodStallLog(ctx context.Context, arg UpdateFoodStallLogParams) error {
+	_, err := q.db.Exec(ctx, updateFoodStallLog, arg.Quantity, arg.ID)
+	return err
+}
+
 const updateVisitorQuantity = `-- name: UpdateVisitorQuantity :exec
 UPDATE visitors
-SET quantity = $1
+SET quantity = $1,
+    updated_at = now()
 WHERE id = $2
 `
 

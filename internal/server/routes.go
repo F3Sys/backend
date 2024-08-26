@@ -77,6 +77,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	protected.POST("/push", s.NodePushHandler)
 
+	protected.PATCH("/push", s.NodeUpdatePushHandler)
+
 	protected.PATCH("/status", s.NodeStatusHandler)
 
 	return e
@@ -130,7 +132,7 @@ func (s *Server) NodePushHandler(c echo.Context) error {
 
 	node := c.Get("node").(*sql.Node)
 
-	err = s.DB.PushNode(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]), push.Quantity)
+	err = s.DB.PushNode(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]), int32(push.Quantity))
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -235,4 +237,27 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 	}
 
 	return echo.ErrBadRequest
+}
+
+type UpdatePush struct {
+	Id       int `json:"id"`
+	Quantity int `json:"quantity"`
+}
+
+func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
+	var push UpdatePush
+
+	err := c.Bind(&push)
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	node := c.Get("node").(*sql.Node)
+
+	err = s.DB.UpdatePushNode(node, int64(push.Id), int32(push.Quantity))
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	return c.NoContent(http.StatusOK)
 }
