@@ -71,7 +71,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	protected.GET("/info", s.NodeInfoHandler)
 
-	protected.GET("/visitor/:sqid", s.NodeVisitorLookupHandler)
+	protected.GET("/table", s.NodeTableHandler)
+
+	protected.GET("/visitor/:f3sid", s.NodeVisitorLookupHandler)
 
 	protected.POST("/push", s.NodePushHandler)
 
@@ -96,19 +98,19 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	visitorSQID, err := s.DB.Visitor(addr, sqid)
+	visitorF3SiD, err := s.DB.Visitor(addr, sqid)
 	if err != nil {
 		return echo.ErrBadRequest
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"sqid": visitorSQID,
+		"f3sid": visitorF3SiD,
 	})
 }
 
 type Push struct {
-	VisitorSQID string `json:"sqid"`
-	Quantity    int    `json:"quantity"`
+	VisitorF3SiD string `json:"f3sid"`
+	Quantity     int    `json:"quantity"`
 }
 
 func (s *Server) NodePushHandler(c echo.Context) error {
@@ -124,7 +126,7 @@ func (s *Server) NodePushHandler(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	pushVisitorID := sqid.Decode(push.VisitorSQID)
+	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
 
 	node := c.Get("node").(*sql.Node)
 
@@ -171,7 +173,7 @@ func (s *Server) NodeInfoHandler(c echo.Context) error {
 }
 
 type VisitorLookup struct {
-	VisitorSQID string `param:"sqid"`
+	visitorF3SiD string `param:"f3sid"`
 }
 
 func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
@@ -187,7 +189,7 @@ func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	visitorLookupVisitorID := sqid.Decode(visitorLookup.VisitorSQID)
+	visitorLookupVisitorID := sqid.Decode(visitorLookup.visitorF3SiD)
 
 	isFirst, err := s.DB.IsVisitorFirst(int64(visitorLookupVisitorID[0]))
 	if err != nil {
@@ -197,4 +199,40 @@ func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]bool{
 		"is_first": isFirst,
 	})
+}
+
+func (s *Server) NodeTableHandler(c echo.Context) error {
+	node := c.Get("node").(*sql.Node)
+
+	sqid, err := Sqids()
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+
+	switch node.Type {
+	case sql.NodeTypeENTRY:
+		entryRow, err := s.DB.EntryRow(node, sqid)
+		if err != nil {
+			return echo.ErrBadRequest
+		}
+
+		return c.JSON(http.StatusOK, entryRow)
+	case sql.NodeTypeFOODSTALL:
+		foodstallRawLog, err := s.DB.FoodstallRow(node, sqid)
+		if err != nil {
+			return echo.ErrBadRequest
+		}
+
+		return c.JSON(http.StatusOK, foodstallRawLog)
+
+	case sql.NodeTypeEXHIBITION:
+		exhibitionRowLog, err := s.DB.ExhibitionRow(node, sqid)
+		if err != nil {
+			return echo.ErrBadRequest
+		}
+
+		return c.JSON(http.StatusOK, exhibitionRowLog)
+	}
+
+	return echo.ErrBadRequest
 }

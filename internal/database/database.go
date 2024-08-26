@@ -35,6 +35,12 @@ type Service interface {
 	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
 
 	IsVisitorFirst(visitorID int64) (bool, error)
+
+	EntryRow(node *sql.Node, sqid *sqids.Sqids) (*[]EntryRowLog, error)
+
+	FoodstallRow(node *sql.Node, sqid *sqids.Sqids) (*[]FoodstallRawLog, error)
+
+	ExhibitionRow(node *sql.Node, sqid *sqids.Sqids) (*[]ExhibitionRowLog, error)
 }
 
 type DbService struct {
@@ -149,23 +155,23 @@ func (s *DbService) Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
 				return "", err
 			}
 
-			visitorSQID, err := sqid.Encode([]uint64{uint64(visitorByIp.ID), uint64(visitorByIp.Random)})
+			visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByIp.ID), uint64(visitorByIp.Random)})
 			if err != nil {
 				return "", err
 			}
 
-			return visitorSQID, nil
+			return visitorF3SiD, nil
 		} else {
 			return "", err
 		}
 	}
 
-	visitorSQID, err := sqid.Encode([]uint64{uint64(visitorByIp.ID), uint64(visitorByIp.Random)})
+	visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByIp.ID), uint64(visitorByIp.Random)})
 	if err != nil {
 		return "", err
 	}
 
-	return visitorSQID, nil
+	return visitorF3SiD, nil
 }
 
 func (s *DbService) PushNode(node *sql.Node, visitorID int64, visitorRandom int32, quantity int) error {
@@ -330,4 +336,121 @@ func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 	}
 
 	return false, err
+}
+
+type EntryRowLog struct {
+	F3SiD     string
+	Type      sql.EntryLogsType
+	CreatedAt time.Time
+}
+
+type FoodstallRawLog struct {
+	F3SiD     string
+	Quantity  int32
+	Price     int32
+	CreatedAt time.Time
+}
+
+type ExhibitionRowLog struct {
+	F3SiD     string
+	CreatedAt time.Time
+}
+
+func (s *DbService) EntryRow(node *sql.Node, sqid *sqids.Sqids) (*[]EntryRowLog, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return nil, err
+	}
+	queries := sql.New(q)
+
+	rows, err := queries.GetEntryLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+
+	var rowLog []EntryRowLog
+
+	for _, row := range rows {
+		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID.Int64)
+		if err != nil {
+			return nil, err
+		}
+
+		visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByID.ID), uint64(visitorByID.Random)})
+
+		rowLog = append(rowLog, EntryRowLog{visitorF3SiD, row.Type, row.CreatedAt.Time})
+	}
+
+	return &rowLog, nil
+}
+
+func (s *DbService) FoodstallRow(node *sql.Node, sqid *sqids.Sqids) (*[]FoodstallRawLog, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return nil, err
+	}
+	queries := sql.New(q)
+
+	rows, err := queries.GetFoodStallLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+
+	var rowLog []FoodstallRawLog
+
+	for _, row := range rows {
+		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID.Int64)
+		if err != nil {
+			return nil, err
+		}
+
+		visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByID.ID), uint64(visitorByID.Random)})
+
+		rowLog = append(rowLog, FoodstallRawLog{visitorF3SiD, row.Quantity, node.Price, row.CreatedAt.Time})
+	}
+
+	return &rowLog, nil
+}
+
+func (s *DbService) ExhibitionRow(node *sql.Node, sqid *sqids.Sqids) (*[]ExhibitionRowLog, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return nil, err
+	}
+	queries := sql.New(q)
+
+	rows, err := queries.GetExhibitionLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
+	if err != nil {
+		return nil, err
+	}
+
+	var rowLog []ExhibitionRowLog
+
+	for _, row := range rows {
+		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID.Int64)
+		if err != nil {
+			return nil, err
+		}
+
+		visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByID.ID), uint64(visitorByID.Random)})
+
+		rowLog = append(rowLog, ExhibitionRowLog{visitorF3SiD, row.CreatedAt.Time})
+	}
+
+	return &rowLog, nil
 }

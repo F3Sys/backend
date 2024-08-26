@@ -115,6 +115,41 @@ func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (V
 	return i, err
 }
 
+const getEntryLogByNodeId = `-- name: GetEntryLogByNodeId :many
+SELECT id, node_id, visitor_id, type, created_at, updated_at
+FROM entry_logs
+WHERE node_id = $1
+ORDER BY id DESC
+LIMIT 10
+`
+
+func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]EntryLog, error) {
+	rows, err := q.db.Query(ctx, getEntryLogByNodeId, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EntryLog
+	for rows.Next() {
+		var i EntryLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeID,
+			&i.VisitorID,
+			&i.Type,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEntryLogByVisitorId = `-- name: GetEntryLogByVisitorId :one
 SELECT id, node_id, visitor_id, type, created_at, updated_at
 FROM entry_logs
@@ -135,6 +170,75 @@ func (q *Queries) GetEntryLogByVisitorId(ctx context.Context, visitorID pgtype.I
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getExhibitionLogByNodeId = `-- name: GetExhibitionLogByNodeId :many
+SELECT id, node_id, visitor_id, created_at, updated_at
+FROM exhibition_logs
+WHERE node_id = $1
+ORDER BY id DESC
+LIMIT 10
+`
+
+func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]ExhibitionLog, error) {
+	rows, err := q.db.Query(ctx, getExhibitionLogByNodeId, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExhibitionLog
+	for rows.Next() {
+		var i ExhibitionLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeID,
+			&i.VisitorID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFoodStallLogByNodeId = `-- name: GetFoodStallLogByNodeId :many
+SELECT id, node_id, visitor_id, quantity, created_at, updated_at
+FROM food_stall_logs
+WHERE node_id = $1
+ORDER BY id DESC
+LIMIT 10
+`
+
+func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]FoodStallLog, error) {
+	rows, err := q.db.Query(ctx, getFoodStallLogByNodeId, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FoodStallLog
+	for rows.Next() {
+		var i FoodStallLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeID,
+			&i.VisitorID,
+			&i.Quantity,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getNodeById = `-- name: GetNodeById :one

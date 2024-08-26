@@ -65,3 +65,21 @@ VALUES ($1, $2);
 -- name: CreateFoodStallLog :exec
 INSERT INTO food_stall_logs (node_id, visitor_id, quantity)
 VALUES ($1, $2, $3);
+-- name: GetEntryLogByNodeId :many
+SELECT *
+FROM entry_logs
+WHERE node_id = $1
+ORDER BY id DESC
+LIMIT 10;
+-- name: GetFoodStallLogByNodeId :many
+SELECT *
+FROM food_stall_logs
+WHERE node_id = $1
+ORDER BY id DESC
+LIMIT 10;
+-- name: GetExhibitionLogByNodeId :many
+SELECT *
+FROM exhibition_logs
+WHERE node_id = $1
+ORDER BY id DESC
+LIMIT 10;
