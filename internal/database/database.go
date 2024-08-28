@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
 	"net/netip"
 	"os"
@@ -17,7 +18,6 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/rs/zerolog/log"
 )
 
 // Service represents a DbService that interacts with a database.
@@ -26,23 +26,23 @@ type Service interface {
 	// The keys and values in the map are DbService-specific.
 	Health() map[string]string
 
-	Password(key string) (*sql.Node, bool, error)
+	Password(key string) (sql.Node, bool, error)
 
 	Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 
-	PushNode(node *sql.Node, visitorID int64, visitorRand int32, quantity int32) error
+	PushNode(node sql.Node, visitorID int64, visitorRand int32, quantity int32) error
 
-	UpdatePushNode(node *sql.Node, id int64, quantity int32) error
+	UpdatePushNode(node sql.Node, id int64, quantity int32) error
 
 	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
 
 	IsVisitorFirst(visitorID int64) (bool, error)
 
-	EntryRow(node *sql.Node, sqid *sqids.Sqids) (*[]EntryRowLog, error)
+	EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, error)
 
-	FoodstallRow(node *sql.Node, sqid *sqids.Sqids) (*[]FoodstallRawLog, error)
+	FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRawLog, error)
 
-	ExhibitionRow(node *sql.Node, sqid *sqids.Sqids) (*[]ExhibitionRowLog, error)
+	ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error)
 }
 
 type DbService struct {
@@ -60,17 +60,18 @@ var (
 )
 
 func New() Service {
+
 	// Reuse Connection
 	if dbInstance != nil {
 		return dbInstance
 	}
 	config, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema))
 	if err != nil {
-		log.Fatal().AnErr("error", err).Send()
+		slog.Default().Error("database config parse error", "error", err)
 	}
 	db, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
-		log.Fatal().AnErr("error", err).Send()
+		slog.Default().Error("database connection failed", "error", err)
 	}
 	//defer db.Close()
 	dbInstance = &DbService{
@@ -92,14 +93,14 @@ func (s *DbService) Health() map[string]string {
 	if err != nil {
 		stats["status"] = "down"
 		stats["error"] = fmt.Sprintf("db down: %v", err)
-		log.Fatal().AnErr("db down: %v", err).Send() // Log the error and terminate the program
+		slog.Default().Error("database down", "error", err)
 		return stats
 	}
 
 	return stats
 }
 
-func (s *DbService) Password(key string) (*sql.Node, bool, error) {
+func (s *DbService) Password(key string) (sql.Node, bool, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -109,7 +110,7 @@ func (s *DbService) Password(key string) (*sql.Node, bool, error) {
 		}
 	}(q, ctx)
 	if err != nil {
-		return nil, false, err
+		return sql.Node{}, false, err
 	}
 	queries := sql.New(q)
 
@@ -118,10 +119,10 @@ func (s *DbService) Password(key string) (*sql.Node, bool, error) {
 		Valid:  true,
 	})
 	if err != nil {
-		return nil, false, err
+		return sql.Node{}, false, err
 	}
 
-	return &nodeByKey, true, nil
+	return nodeByKey, true, nil
 }
 
 func (s *DbService) Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
@@ -176,7 +177,7 @@ func (s *DbService) Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
 	return visitorF3SiD, nil
 }
 
-func (s *DbService) PushNode(node *sql.Node, visitorID int64, visitorRandom int32, quantity int32) error {
+func (s *DbService) PushNode(node sql.Node, visitorID int64, visitorRandom int32, quantity int32) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -285,7 +286,7 @@ func (s *DbService) PushNode(node *sql.Node, visitorID int64, visitorRandom int3
 	return nil
 }
 
-func (s *DbService) UpdatePushNode(node *sql.Node, id int64, quantity int32) error {
+func (s *DbService) UpdatePushNode(node sql.Node, id int64, quantity int32) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -393,7 +394,7 @@ type ExhibitionRowLog struct {
 	CreatedAt time.Time
 }
 
-func (s *DbService) EntryRow(node *sql.Node, sqid *sqids.Sqids) (*[]EntryRowLog, error) {
+func (s *DbService) EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -426,10 +427,10 @@ func (s *DbService) EntryRow(node *sql.Node, sqid *sqids.Sqids) (*[]EntryRowLog,
 		rowLog = append(rowLog, EntryRowLog{row.ID, visitorF3SiD, row.Type, row.CreatedAt.Time})
 	}
 
-	return &rowLog, nil
+	return rowLog, nil
 }
 
-func (s *DbService) FoodstallRow(node *sql.Node, sqid *sqids.Sqids) (*[]FoodstallRawLog, error) {
+func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRawLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -462,10 +463,10 @@ func (s *DbService) FoodstallRow(node *sql.Node, sqid *sqids.Sqids) (*[]Foodstal
 		rowLog = append(rowLog, FoodstallRawLog{row.ID, visitorF3SiD, row.Quantity, node.Price, row.CreatedAt.Time})
 	}
 
-	return &rowLog, nil
+	return rowLog, nil
 }
 
-func (s *DbService) ExhibitionRow(node *sql.Node, sqid *sqids.Sqids) (*[]ExhibitionRowLog, error) {
+func (s *DbService) ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -498,5 +499,5 @@ func (s *DbService) ExhibitionRow(node *sql.Node, sqid *sqids.Sqids) (*[]Exhibit
 		rowLog = append(rowLog, ExhibitionRowLog{row.ID, visitorF3SiD, row.CreatedAt.Time})
 	}
 
-	return &rowLog, nil
+	return rowLog, nil
 }

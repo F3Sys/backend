@@ -7,7 +7,6 @@ require (
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.12.0
-	github.com/rs/zerolog v1.33.0
 	github.com/sqids/sqids-go v0.4.1
 )
 

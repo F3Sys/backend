@@ -2,6 +2,7 @@ package server
 
 import (
 	sql "backend/internal/sqlc"
+	"log/slog"
 	"net/http"
 	"net/netip"
 	"os"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/rs/zerolog/log"
 	"github.com/sqids/sqids-go"
 )
 
@@ -37,12 +37,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 		LogRemoteIP: true,
 		LogLatency:  true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			log.Info().
-				Str("URI", v.URI).
-				Int("status", v.Status).
-				Str("remote_ip", v.RemoteIP).
-				Dur("latency", v.Latency).
-				Msg("request")
+			slog.Default().Info("request",
+				"URI", v.URI,
+				"status", v.Status,
+				"remote_ip", v.RemoteIP,
+				"latency", v.Latency,
+			)
 
 			return nil
 		},
@@ -130,7 +130,7 @@ func (s *Server) NodePushHandler(c echo.Context) error {
 
 	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
 
-	node := c.Get("node").(*sql.Node)
+	node := c.Get("node").(sql.Node)
 
 	err = s.DB.PushNode(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]), int32(push.Quantity))
 	if err != nil {
@@ -204,7 +204,7 @@ func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
 }
 
 func (s *Server) NodeTableHandler(c echo.Context) error {
-	node := c.Get("node").(*sql.Node)
+	node := c.Get("node").(sql.Node)
 
 	sqid, err := Sqids()
 	if err != nil {
@@ -252,7 +252,7 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	node := c.Get("node").(*sql.Node)
+	node := c.Get("node").(sql.Node)
 
 	err = s.DB.UpdatePushNode(node, int64(push.Id), int32(push.Quantity))
 	if err != nil {
