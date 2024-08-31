@@ -30,7 +30,13 @@ type Service interface {
 
 	Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 
-	PushNode(node sql.Node, visitorID int64, visitorRand int32, quantity int32) error
+	IpNode(ip netip.Addr) (sql.Node, error)
+
+	PushEntry(node sql.Node, visitorID int64, visitorRandom int32) error
+
+	PushFoodStall(node sql.Node, visitorID int64, visitorRandom int32, foods []Foods) error
+
+	PushExhibition(node sql.Node, visitorID int64, visitorRandom int32) error
 
 	UpdatePushNode(node sql.Node, id int64, quantity int32) error
 
@@ -43,6 +49,8 @@ type Service interface {
 	FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRawLog, error)
 
 	ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error)
+
+	Foods(node sql.Node) ([]NodeFood, error)
 }
 
 type DbService struct {
@@ -177,7 +185,7 @@ func (s *DbService) Visitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
 	return visitorF3SiD, nil
 }
 
-func (s *DbService) PushNode(node sql.Node, visitorID int64, visitorRandom int32, quantity int32) error {
+func (s *DbService) PushEntry(node sql.Node, visitorID int64, visitorRandom int32) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -198,89 +206,136 @@ func (s *DbService) PushNode(node sql.Node, visitorID int64, visitorRandom int32
 		return err
 	}
 
-	switch node.Type {
-	case sql.NodeTypeENTRY:
-		var entryLogType sql.EntryLogsType
-		entryLog, err := queries.GetEntryLogByVisitorId(ctx, pgtype.Int8{Int64: visitorById.ID, Valid: true})
+	entryLog, err := queries.GetEntryLogByVisitorId(ctx, pgtype.Int8{Int64: visitorById.ID, Valid: true})
 
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				// First time entering
-				entryLogType = sql.EntryLogsTypeENTERED
+	var entryLogType sql.EntryLogsType
 
-				err := queries.UpdateVisitorQuantity(ctx, sql.UpdateVisitorQuantityParams{
-					Quantity: quantity,
-					ID:       visitorById.ID,
-				})
-				if err != nil {
-					return err
-				}
-			} else {
-				return err
-			}
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// First time entering
+			entryLogType = sql.EntryLogsTypeENTERED
 		} else {
-			if entryLog.Type == sql.EntryLogsTypeENTERED {
-				entryLogType = sql.EntryLogsTypeLEFT
-			} else {
-				entryLogType = sql.EntryLogsTypeENTERED
-			}
+			return err
 		}
+	} else {
+		if entryLog.Type == sql.EntryLogsTypeENTERED {
+			entryLogType = sql.EntryLogsTypeLEFT
+		} else {
+			entryLogType = sql.EntryLogsTypeENTERED
+		}
+	}
 
-		err = queries.CreateEntryLog(ctx, sql.CreateEntryLogParams{
-			NodeID: pgtype.Int8{
-				Int64: node.ID,
-				Valid: true,
-			},
-			VisitorID: pgtype.Int8{
-				Int64: visitorById.ID,
-				Valid: true,
-			},
-			Type: entryLogType,
-		})
+	err = queries.CreateEntryLog(ctx, sql.CreateEntryLogParams{
+		NodeID: pgtype.Int8{
+			Int64: node.ID,
+			Valid: true,
+		},
+		VisitorID: pgtype.Int8{
+			Int64: visitorById.ID,
+			Valid: true,
+		},
+		Type: entryLogType,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type Foods struct {
+	Name     string
+	Quantity int
+}
+
+func (s *DbService) PushFoodStall(node sql.Node, visitorID int64, visitorRandom int32, foods []Foods) error {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return err
+	}
+	queries := sql.New(q)
+
+	// Check if visitor exists
+	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sql.GetVisitorByIdAndRandomParams{
+		ID:     visitorID,
+		Random: visitorRandom,
+	})
+	if err != nil {
+		return err
+	}
+
+	var foodsById []sql.Food
+	// Check each food in foods
+	for _, food := range foods {
+		foodById, err := queries.GetFoodByName(ctx, food.Name)
 		if err != nil {
 			return err
 		}
+		foodsById = append(foodsById, foodById)
+	}
 
-		err = q.Commit(ctx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-
-	case sql.NodeTypeFOODSTALL:
-		err := queries.CreateFoodStallLog(ctx, sql.CreateFoodStallLogParams{
+	for i, food := range foods {
+		err = queries.CreateFoodStallLog(ctx, sql.CreateFoodStallLogParams{
 			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
 			VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
-			Quantity:  quantity,
+			FoodID:    pgtype.Int8{Int64: foodsById[i].ID, Valid: true},
+			Quantity:  int32(food.Quantity),
 		})
 		if err != nil {
 			return err
 		}
+	}
 
-		err = q.Commit(ctx)
-		if err != nil {
-			return err
-		}
+	err = q.Commit(ctx)
+	if err != nil {
+		return err
+	}
 
-		return nil
+	return nil
+}
 
-	case sql.NodeTypeEXHIBITION:
-		err := queries.CreateExhibitionLog(ctx, sql.CreateExhibitionLogParams{
-			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
-			VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
-		})
-		if err != nil {
-			return err
-		}
+func (s *DbService) PushExhibition(node sql.Node, visitorID int64, visitorRandom int32) error {
+	ctx := context.Background()
 
-		err = q.Commit(ctx)
-		if err != nil {
-			return err
-		}
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return err
+	}
+	queries := sql.New(q)
 
-		return nil
+	// Check if visitor exists
+	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sql.GetVisitorByIdAndRandomParams{
+		ID:     visitorID,
+		Random: visitorRandom,
+	})
+	if err != nil {
+		return err
+	}
 
+	err = queries.CreateExhibitionLog(ctx, sql.CreateExhibitionLogParams{
+		NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
+		VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
+	})
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -383,8 +438,8 @@ type EntryRowLog struct {
 type FoodstallRawLog struct {
 	Id        int64
 	F3SiD     string
+	FoodId    int64
 	Quantity  int32
-	Price     int32
 	CreatedAt time.Time
 }
 
@@ -460,7 +515,7 @@ func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallR
 			return nil, err
 		}
 
-		rowLog = append(rowLog, FoodstallRawLog{row.ID, visitorF3SiD, row.Quantity, node.Price, row.CreatedAt.Time})
+		rowLog = append(rowLog, FoodstallRawLog{row.ID, visitorF3SiD, row.FoodID.Int64, row.Quantity, row.CreatedAt.Time})
 	}
 
 	return rowLog, nil
@@ -500,4 +555,68 @@ func (s *DbService) ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]Exhibitio
 	}
 
 	return rowLog, nil
+}
+
+func (s *DbService) IpNode(ip netip.Addr) (sql.Node, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return sql.Node{}, err
+	}
+	queries := sql.New(q)
+
+	nodeByIp, err := queries.GetNodeByIp(ctx, &ip)
+	if err != nil {
+		return sql.Node{}, err
+	}
+
+	err = queries.DeleteNodeIp(ctx, &ip)
+	if err != nil {
+		return sql.Node{}, err
+	}
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return sql.Node{}, err
+	}
+
+	return nodeByIp, nil
+}
+
+type NodeFood struct {
+	Name  string
+	Price int
+}
+
+func (s *DbService) Foods(node sql.Node) ([]NodeFood, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return nil, err
+	}
+	queries := sql.New(q)
+
+	foods, err := queries.GetFoodsByNodeId(ctx, pgtype.Int8{
+		Int64: node.ID,
+		Valid: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var foodsList []NodeFood
+
+	for _, food := range foods {
+		foodsList = append(foodsList, NodeFood{food.Name, int(food.Price)})
+	}
+
+	return foodsList, nil
 }

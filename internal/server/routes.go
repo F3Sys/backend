@@ -1,6 +1,7 @@
 package server
 
 import (
+	"backend/internal/database"
 	sql "backend/internal/sqlc"
 	"log/slog"
 	"net/http"
@@ -52,9 +53,11 @@ func (s *Server) RegisterRoutes() http.Handler {
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
 
-	e.GET("/ping", s.PingHandler)
+	e.GET("/ip", s.PingHandler)
 
 	e.GET("/visitor", s.VisitorHandler)
+
+	e.GET("/node", s.NodeIpHandler)
 
 	protected := e.Group("/protected", middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
 		node, ok, err := s.DB.Password(key)
@@ -67,15 +70,19 @@ func (s *Server) RegisterRoutes() http.Handler {
 		return ok, nil
 	}))
 
-	protected.GET("/ping", s.PingHandler)
-
 	protected.GET("/info", s.NodeInfoHandler)
+
+	protected.GET("/foods", s.NodeFoodsHandler)
 
 	protected.GET("/table", s.NodeTableHandler)
 
 	protected.GET("/visitor/:f3sid", s.NodeVisitorLookupHandler)
 
-	protected.POST("/push", s.NodePushHandler)
+	protected.POST("/push/entry", s.NodePushEntryHandler)
+
+	protected.POST("/push/foodstall", s.NodePushFoodStallHandler)
+
+	protected.POST("/push/exhibition", s.NodePushExhibitionHandler)
 
 	protected.PATCH("/push", s.NodeUpdatePushHandler)
 
@@ -85,7 +92,12 @@ func (s *Server) RegisterRoutes() http.Handler {
 }
 
 func (s *Server) PingHandler(c echo.Context) error {
-	return c.String(http.StatusOK, "pong")
+	ip := c.RealIP()
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+	return c.String(http.StatusOK, addr.String())
 }
 
 func (s *Server) VisitorHandler(c echo.Context) error {
@@ -110,13 +122,18 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 	})
 }
 
-type Push struct {
+// type Push struct {
+// 	VisitorF3SiD string  `json:"f3sid"`
+// 	Name         string  `json:"name"`
+// 	Foods        []Foods `json:"foods"`
+// }
+
+type PushEntry struct {
 	VisitorF3SiD string `json:"f3sid"`
-	Quantity     int    `json:"quantity"`
 }
 
-func (s *Server) NodePushHandler(c echo.Context) error {
-	var push Push
+func (s *Server) NodePushEntryHandler(c echo.Context) error {
+	var push PushEntry
 
 	err := c.Bind(&push)
 	if err != nil {
@@ -132,7 +149,80 @@ func (s *Server) NodePushHandler(c echo.Context) error {
 
 	node := c.Get("node").(sql.Node)
 
-	err = s.DB.PushNode(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]), int32(push.Quantity))
+	err = s.DB.PushEntry(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+type PushFoodStall struct {
+	VisitorF3SiD string  `json:"f3sid"`
+	Foods        []Foods `json:"foods"`
+}
+
+type Foods struct {
+	Name     string `json:"name"`
+	Quantity int    `json:"quantity"`
+}
+
+func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
+	var push PushFoodStall
+
+	err := c.Bind(&push)
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	sqid, err := Sqids()
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+
+	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
+
+	node := c.Get("node").(sql.Node)
+
+	// Convert push.Foods to database.Foods
+	foods := make([]database.Foods, len(push.Foods))
+	for i, food := range push.Foods {
+		foods[i] = database.Foods{
+			Name:     food.Name,
+			Quantity: food.Quantity,
+		}
+	}
+
+	err = s.DB.PushFoodStall(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]), foods)
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	return c.NoContent(http.StatusOK)
+}
+
+type PushExhibition struct {
+	VisitorF3SiD string `json:"f3sid"`
+}
+
+func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
+	var push PushExhibition
+
+	err := c.Bind(&push)
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	sqid, err := Sqids()
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+
+	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
+
+	node := c.Get("node").(sql.Node)
+
+	err = s.DB.PushExhibition(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -154,7 +244,7 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	node := c.Get("node").(*sql.Node)
+	node := c.Get("node").(sql.Node)
 
 	err = s.DB.StatusNode(node.ID, int32(status.Level), int32(status.ChargingTime), int32(status.DischargingTime), status.Charging)
 	if err != nil {
@@ -165,13 +255,32 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 }
 
 func (s *Server) NodeInfoHandler(c echo.Context) error {
-	node := c.Get("node").(*sql.Node)
+	node := c.Get("node").(sql.Node)
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"name":  node.Name,
-		"type":  node.Type,
-		"price": node.Price,
+		"name": node.Name,
+		"type": node.Type,
 	})
+}
+
+func (s *Server) NodeFoodsHandler(c echo.Context) error {
+	node := c.Get("node").(sql.Node)
+
+	foods, err := s.DB.Foods(node)
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	foodsArray := make([]map[string]interface{}, len(foods))
+	for i, food := range foods {
+		foodsArray[i] = map[string]interface{}{
+			"name":  food.Name,
+			"price": food.Price,
+		}
+	}
+
+	// })
+	return c.JSON(http.StatusOK, foodsArray)
 }
 
 type VisitorLookup struct {
@@ -260,4 +369,21 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusOK)
+}
+
+func (s *Server) NodeIpHandler(c echo.Context) error {
+	ip := c.RealIP()
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return echo.ErrInternalServerError
+	}
+
+	node, err := s.DB.IpNode(addr)
+	if err != nil {
+		return echo.ErrBadRequest
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"key": node.Key.String,
+	})
 }

@@ -18,11 +18,6 @@ LIMIT 1;
 INSERT INTO visitors (ip, random)
 VALUES ($1, $2)
 RETURNING *;
--- name: UpdateVisitorQuantity :exec
-UPDATE visitors
-SET quantity = $1,
-    updated_at = now()
-WHERE id = $2;
 -- name: CreateBattery :exec
 INSERT INTO batteries (
         node_id,
@@ -51,6 +46,24 @@ SELECT *
 FROM nodes
 WHERE key = $1
 LIMIT 1;
+-- name: GetNodeByIp :one
+SELECT *
+FROM nodes
+WHERE ip = $1
+LIMIT 1;
+-- name: DeleteNodeIp :exec
+UPDATE nodes
+SET ip = NULL
+WHERE ip = $1;
+-- name: GetFoodByName :one
+SELECT *
+FROM foods
+WHERE name = $1
+LIMIT 1;
+-- name: GetFoodsByNodeId :many
+SELECT *
+FROM foods
+WHERE node_id = $1;
 -- name: GetEntryLogByVisitorId :one
 SELECT *
 FROM entry_logs
@@ -64,8 +77,8 @@ VALUES ($1, $2, $3);
 INSERT INTO exhibition_logs (node_id, visitor_id)
 VALUES ($1, $2);
 -- name: CreateFoodStallLog :exec
-INSERT INTO food_stall_logs (node_id, visitor_id, quantity)
-VALUES ($1, $2, $3);
+INSERT INTO food_stall_logs (node_id, visitor_id, food_id, quantity)
+VALUES ($1, $2, $3, $4);
 -- name: GetEntryLogByNodeId :many
 SELECT *
 FROM entry_logs

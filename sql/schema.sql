@@ -2,12 +2,22 @@ CREATE TYPE node_type AS ENUM ('ENTRY', 'FOODSTALL', 'EXHIBITION');
 -- Node table
 CREATE TABLE nodes (
     id BIGSERIAL PRIMARY KEY,
-    key VARCHAR(255) UNIQUE,
-    name VARCHAR(255) NOT NULL,
+    key TEXT UNIQUE,
+    name TEXT NOT NULL,
+    ip INET UNIQUE,
     type node_type NOT NULL,
-    price INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Foods table
+CREATE TABLE foods (
+    id BIGSERIAL PRIMARY KEY,
+    node_id BIGINT,
+    name TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 -- Battery table
 CREATE TABLE batteries (
@@ -24,7 +34,6 @@ CREATE TABLE batteries (
 -- Visitor table
 CREATE TABLE visitors (
     id BIGSERIAL PRIMARY KEY,
-    quantity INTEGER NOT NULL DEFAULT 1,
     random INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -60,12 +69,14 @@ CREATE TABLE food_stall_logs (
     id BIGSERIAL PRIMARY KEY,
     node_id BIGINT,
     visitor_id BIGINT,
+    food_id BIGINT,
     quantity INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE RESTRICT ON
-        UPDATE CASCADE
+        UPDATE CASCADE,
+    FOREIGN KEY (food_id) REFERENCES foods(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 -- ExhibitionLog table
 CREATE TABLE exhibition_logs (

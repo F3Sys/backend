@@ -125,10 +125,20 @@ type ExhibitionLog struct {
 	UpdatedAt pgtype.Timestamp
 }
 
+type Food struct {
+	ID        int64
+	NodeID    pgtype.Int8
+	Name      string
+	Price     int32
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
 type FoodStallLog struct {
 	ID        int64
 	NodeID    pgtype.Int8
 	VisitorID pgtype.Int8
+	FoodID    pgtype.Int8
 	Quantity  int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
@@ -138,8 +148,8 @@ type Node struct {
 	ID        int64
 	Key       pgtype.Text
 	Name      string
+	Ip        *netip.Addr
 	Type      NodeType
-	Price     int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }
@@ -156,7 +166,6 @@ type Student struct {
 
 type Visitor struct {
 	ID        int64
-	Quantity  int32
 	Random    int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp

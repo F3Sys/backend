@@ -75,25 +75,31 @@ func (q *Queries) CreateExhibitionLog(ctx context.Context, arg CreateExhibitionL
 }
 
 const createFoodStallLog = `-- name: CreateFoodStallLog :exec
-INSERT INTO food_stall_logs (node_id, visitor_id, quantity)
-VALUES ($1, $2, $3)
+INSERT INTO food_stall_logs (node_id, visitor_id, food_id, quantity)
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateFoodStallLogParams struct {
 	NodeID    pgtype.Int8
 	VisitorID pgtype.Int8
+	FoodID    pgtype.Int8
 	Quantity  int32
 }
 
 func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLogParams) error {
-	_, err := q.db.Exec(ctx, createFoodStallLog, arg.NodeID, arg.VisitorID, arg.Quantity)
+	_, err := q.db.Exec(ctx, createFoodStallLog,
+		arg.NodeID,
+		arg.VisitorID,
+		arg.FoodID,
+		arg.Quantity,
+	)
 	return err
 }
 
 const createVisitor = `-- name: CreateVisitor :one
 INSERT INTO visitors (ip, random)
 VALUES ($1, $2)
-RETURNING id, quantity, random, created_at, updated_at, ip
+RETURNING id, random, created_at, updated_at, ip
 `
 
 type CreateVisitorParams struct {
@@ -106,13 +112,23 @@ func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (V
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
-		&i.Quantity,
 		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Ip,
 	)
 	return i, err
+}
+
+const deleteNodeIp = `-- name: DeleteNodeIp :exec
+UPDATE nodes
+SET ip = NULL
+WHERE ip = $1
+`
+
+func (q *Queries) DeleteNodeIp(ctx context.Context, ip *netip.Addr) error {
+	_, err := q.db.Exec(ctx, deleteNodeIp, ip)
+	return err
 }
 
 const getEntryLogByNodeId = `-- name: GetEntryLogByNodeId :many
@@ -206,8 +222,29 @@ func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.In
 	return items, nil
 }
 
+const getFoodByName = `-- name: GetFoodByName :one
+SELECT id, node_id, name, price, created_at, updated_at
+FROM foods
+WHERE name = $1
+LIMIT 1
+`
+
+func (q *Queries) GetFoodByName(ctx context.Context, name string) (Food, error) {
+	row := q.db.QueryRow(ctx, getFoodByName, name)
+	var i Food
+	err := row.Scan(
+		&i.ID,
+		&i.NodeID,
+		&i.Name,
+		&i.Price,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getFoodStallLogByNodeId = `-- name: GetFoodStallLogByNodeId :many
-SELECT id, node_id, visitor_id, quantity, created_at, updated_at
+SELECT id, node_id, visitor_id, food_id, quantity, created_at, updated_at
 FROM food_stall_logs
 WHERE node_id = $1
 ORDER BY id DESC
@@ -227,6 +264,7 @@ func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int
 			&i.ID,
 			&i.NodeID,
 			&i.VisitorID,
+			&i.FoodID,
 			&i.Quantity,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -241,8 +279,41 @@ func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int
 	return items, nil
 }
 
+const getFoodsByNodeId = `-- name: GetFoodsByNodeId :many
+SELECT id, node_id, name, price, created_at, updated_at
+FROM foods
+WHERE node_id = $1
+`
+
+func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]Food, error) {
+	rows, err := q.db.Query(ctx, getFoodsByNodeId, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Food
+	for rows.Next() {
+		var i Food
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeID,
+			&i.Name,
+			&i.Price,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNodeById = `-- name: GetNodeById :one
-SELECT id, key, name, type, price, created_at, updated_at
+SELECT id, key, name, ip, type, created_at, updated_at
 FROM nodes
 WHERE id = $1
 LIMIT 1
@@ -255,8 +326,30 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 		&i.ID,
 		&i.Key,
 		&i.Name,
+		&i.Ip,
 		&i.Type,
-		&i.Price,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getNodeByIp = `-- name: GetNodeByIp :one
+SELECT id, key, name, ip, type, created_at, updated_at
+FROM nodes
+WHERE ip = $1
+LIMIT 1
+`
+
+func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error) {
+	row := q.db.QueryRow(ctx, getNodeByIp, ip)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Key,
+		&i.Name,
+		&i.Ip,
+		&i.Type,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -264,7 +357,7 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 }
 
 const getNodeByKey = `-- name: GetNodeByKey :one
-SELECT id, key, name, type, price, created_at, updated_at
+SELECT id, key, name, ip, type, created_at, updated_at
 FROM nodes
 WHERE key = $1
 LIMIT 1
@@ -277,8 +370,8 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 		&i.ID,
 		&i.Key,
 		&i.Name,
+		&i.Ip,
 		&i.Type,
-		&i.Price,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -286,7 +379,7 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 }
 
 const getVisitorById = `-- name: GetVisitorById :one
-SELECT id, quantity, random, created_at, updated_at, ip
+SELECT id, random, created_at, updated_at, ip
 FROM visitors
 WHERE id = $1
 LIMIT 1
@@ -297,7 +390,6 @@ func (q *Queries) GetVisitorById(ctx context.Context, id int64) (Visitor, error)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
-		&i.Quantity,
 		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -307,7 +399,7 @@ func (q *Queries) GetVisitorById(ctx context.Context, id int64) (Visitor, error)
 }
 
 const getVisitorByIdAndRandom = `-- name: GetVisitorByIdAndRandom :one
-SELECT id, quantity, random, created_at, updated_at, ip
+SELECT id, random, created_at, updated_at, ip
 FROM visitors
 WHERE id = $1
     AND random = $2
@@ -324,7 +416,6 @@ func (q *Queries) GetVisitorByIdAndRandom(ctx context.Context, arg GetVisitorByI
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
-		&i.Quantity,
 		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -334,7 +425,7 @@ func (q *Queries) GetVisitorByIdAndRandom(ctx context.Context, arg GetVisitorByI
 }
 
 const getVisitorByIp = `-- name: GetVisitorByIp :one
-SELECT id, quantity, random, created_at, updated_at, ip
+SELECT id, random, created_at, updated_at, ip
 FROM visitors
 WHERE ip = $1
 LIMIT 1
@@ -345,7 +436,6 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip netip.Addr) (Visitor, e
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
-		&i.Quantity,
 		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -399,22 +489,5 @@ type UpdateFoodStallLogParams struct {
 
 func (q *Queries) UpdateFoodStallLog(ctx context.Context, arg UpdateFoodStallLogParams) error {
 	_, err := q.db.Exec(ctx, updateFoodStallLog, arg.Quantity, arg.ID)
-	return err
-}
-
-const updateVisitorQuantity = `-- name: UpdateVisitorQuantity :exec
-UPDATE visitors
-SET quantity = $1,
-    updated_at = now()
-WHERE id = $2
-`
-
-type UpdateVisitorQuantityParams struct {
-	Quantity int32
-	ID       int64
-}
-
-func (q *Queries) UpdateVisitorQuantity(ctx context.Context, arg UpdateVisitorQuantityParams) error {
-	_, err := q.db.Exec(ctx, updateVisitorQuantity, arg.Quantity, arg.ID)
 	return err
 }
