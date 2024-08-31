@@ -3,7 +3,6 @@ module backend
 go 1.22.5
 
 require (
-	github.com/gofrs/uuid/v5 v5.0.0
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.12.0
