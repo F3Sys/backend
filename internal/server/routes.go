@@ -147,6 +147,10 @@ func (s *Server) NodePushEntryHandler(c echo.Context) error {
 
 	node := c.Get("node").(sql.Node)
 
+	if node.Type != sql.NodeTypeENTRY {
+		return echo.ErrBadRequest
+	}
+
 	err = s.DB.PushEntry(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
 	if err != nil {
 		return echo.ErrBadRequest
@@ -184,6 +188,10 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 	}
 
 	node := c.Get("node").(sql.Node)
+
+	if node.Type != sql.NodeTypeFOODSTALL {
+		return echo.ErrBadRequest
+	}
 
 	// Convert push.Foods to database.Foods
 	foods := make([]database.Foods, len(push.Foods))
@@ -225,6 +233,10 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 	}
 
 	node := c.Get("node").(sql.Node)
+
+	if node.Type != sql.NodeTypeEXHIBITION {
+		return echo.ErrBadRequest
+	}
 
 	err = s.DB.PushExhibition(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
 	if err != nil {

@@ -222,6 +222,27 @@ func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.In
 	return items, nil
 }
 
+const getFoodById = `-- name: GetFoodById :one
+SELECT id, node_id, name, price, created_at, updated_at
+FROM foods
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetFoodById(ctx context.Context, id int64) (Food, error) {
+	row := q.db.QueryRow(ctx, getFoodById, id)
+	var i Food
+	err := row.Scan(
+		&i.ID,
+		&i.NodeID,
+		&i.Name,
+		&i.Price,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getFoodByName = `-- name: GetFoodByName :one
 SELECT id, node_id, name, price, created_at, updated_at
 FROM foods

@@ -46,7 +46,7 @@ type Service interface {
 
 	EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, error)
 
-	FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRawLog, error)
+	FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error)
 
 	ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error)
 
@@ -428,24 +428,25 @@ func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 }
 
 type EntryRowLog struct {
-	Id        int64
-	F3SiD     string
-	Type      sql.EntryLogsType
-	CreatedAt time.Time
+	Id        int64             `json:"id"`
+	F3SiD     string            `json:"f3sid"`
+	Type      sql.EntryLogsType `json:"type"`
+	CreatedAt time.Time         `json:"created_at"`
 }
 
-type FoodstallRawLog struct {
-	Id        int64
-	F3SiD     string
-	FoodId    int64
-	Quantity  int32
-	CreatedAt time.Time
+type FoodstallRowLog struct {
+	Id        int64     `json:"id"`
+	F3SiD     string    `json:"f3sid"`
+	FoodName  string    `json:"food_name"`
+	Quantity  int32     `json:"quantity"`
+	Price     int32     `json:"price"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type ExhibitionRowLog struct {
-	Id        int64
-	F3SiD     string
-	CreatedAt time.Time
+	Id        int64     `json:"id"`
+	F3SiD     string    `json:"f3sid"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (s *DbService) EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, error) {
@@ -484,7 +485,7 @@ func (s *DbService) EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, e
 	return rowLog, nil
 }
 
-func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRawLog, error) {
+func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -501,7 +502,7 @@ func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallR
 		return nil, err
 	}
 
-	var rowLog []FoodstallRawLog
+	var rowLog []FoodstallRowLog
 
 	for _, row := range rows {
 		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID.Int64)
@@ -514,7 +515,12 @@ func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallR
 			return nil, err
 		}
 
-		rowLog = append(rowLog, FoodstallRawLog{row.ID, visitorF3SiD, row.FoodID.Int64, row.Quantity, row.CreatedAt.Time})
+		foodByID, err := queries.GetFoodById(ctx, row.FoodID.Int64)
+		if err != nil {
+			return nil, err
+		}
+
+		rowLog = append(rowLog, FoodstallRowLog{row.ID, visitorF3SiD, foodByID.Name, row.Quantity, foodByID.Price, row.CreatedAt.Time})
 	}
 
 	return rowLog, nil
