@@ -6,8 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/netip"
-	"os"
-	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -15,12 +13,9 @@ import (
 )
 
 func Sqids() (*sqids.Sqids, error) {
-	minlength, _ := strconv.Atoi(os.Getenv("SQIDS_MINLENGTH"))
-	alphabet := os.Getenv("SQIDS_ALPHABET")
-
 	sqid, err := sqids.New(sqids.Options{
-		MinLength: uint8(minlength),
-		Alphabet:  alphabet,
+		MinLength: uint8(7),
+		Alphabet:  "23456789CFGHJMPQRVWX",
 	})
 	if err != nil {
 		return nil, err
@@ -146,6 +141,9 @@ func (s *Server) NodePushEntryHandler(c echo.Context) error {
 	}
 
 	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
+	if len(pushVisitorID) != 2 {
+		return echo.ErrBadRequest
+	}
 
 	node := c.Get("node").(sql.Node)
 
@@ -181,6 +179,9 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 	}
 
 	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
+	if len(pushVisitorID) != 2 {
+		return echo.ErrBadRequest
+	}
 
 	node := c.Get("node").(sql.Node)
 
@@ -219,6 +220,9 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 	}
 
 	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
+	if len(pushVisitorID) != 2 {
+		return echo.ErrBadRequest
+	}
 
 	node := c.Get("node").(sql.Node)
 
@@ -301,6 +305,9 @@ func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
 	}
 
 	visitorLookupVisitorID := sqid.Decode(visitorLookup.visitorF3SiD)
+	if len(visitorLookupVisitorID) != 2 {
+		return echo.ErrBadRequest
+	}
 
 	isFirst, err := s.DB.IsVisitorFirst(int64(visitorLookupVisitorID[0]))
 	if err != nil {
