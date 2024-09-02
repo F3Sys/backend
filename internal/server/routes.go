@@ -16,6 +16,7 @@ func Sqids() (*sqids.Sqids, error) {
 	sqid, err := sqids.New(sqids.Options{
 		MinLength: uint8(7),
 		Alphabet:  "23456789CFGHJMPQRVWX",
+		Blocklist: []string{},
 	})
 	if err != nil {
 		return nil, err
