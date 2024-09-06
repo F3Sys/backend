@@ -8,8 +8,8 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o /docker-f3s-backend
+RUN go build -o main cmd/api/main.go
 
 EXPOSE 8080
 
-CMD ["/docker-f3s-backend"]
+CMD ["/main"]
