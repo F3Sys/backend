@@ -264,6 +264,19 @@ func (q *Queries) GetFoodByName(ctx context.Context, name string) (Food, error) 
 	return i, err
 }
 
+const getFoodIdById = `-- name: GetFoodIdById :one
+SELECT (id)
+FROM foods
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetFoodIdById(ctx context.Context, id int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getFoodIdById, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getFoodStallLogByNodeId = `-- name: GetFoodStallLogByNodeId :many
 SELECT id, node_id, visitor_id, food_id, quantity, created_at, updated_at
 FROM food_stall_logs

@@ -65,6 +65,11 @@ SELECT *
 FROM foods
 WHERE id = $1
 LIMIT 1;
+-- name: GetFoodIdById :one
+SELECT (id)
+FROM foods
+WHERE id = $1
+LIMIT 1;
 -- name: GetFoodsByNodeId :many
 SELECT *
 FROM foods

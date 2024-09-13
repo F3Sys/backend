@@ -248,7 +248,7 @@ func (s *DbService) PushEntry(node sql.Node, visitorID int64, visitorRandom int3
 }
 
 type Foods struct {
-	Name     string
+	ID       int
 	Quantity int
 }
 
@@ -273,21 +273,26 @@ func (s *DbService) PushFoodStall(node sql.Node, visitorID int64, visitorRandom 
 		return err
 	}
 
-	var foodsById []sql.Food
+	foodMap := make(map[int]int64)
 	// Check each food in foods
 	for _, food := range foods {
-		foodById, err := queries.GetFoodByName(ctx, food.Name)
+		foodById, err := queries.GetFoodIdById(ctx, int64(food.ID))
 		if err != nil {
 			return err
 		}
-		foodsById = append(foodsById, foodById)
+		foodMap[food.ID] = foodById
 	}
 
-	for i, food := range foods {
+	for _, food := range foods {
+		foodById, exists := foodMap[food.ID]
+		if !exists {
+			return fmt.Errorf("food with id %d not found in map", food.ID)
+		}
+
 		err = queries.CreateFoodStallLog(ctx, sql.CreateFoodStallLogParams{
 			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
 			VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
-			FoodID:    pgtype.Int8{Int64: foodsById[i].ID, Valid: true},
+			FoodID:    pgtype.Int8{Int64: foodById, Valid: true},
 			Quantity:  int32(food.Quantity),
 		})
 		if err != nil {
@@ -437,7 +442,7 @@ type EntryRowLog struct {
 type FoodstallRowLog struct {
 	Id        int64     `json:"id"`
 	F3SiD     string    `json:"f3sid"`
-	FoodName  string    `json:"food_name"`
+	FoodName  string    `json:"name"`
 	Quantity  int32     `json:"quantity"`
 	Price     int32     `json:"price"`
 	CreatedAt time.Time `json:"created_at"`
@@ -593,6 +598,7 @@ func (s *DbService) IpNode(ip netip.Addr) (sql.Node, error) {
 }
 
 type NodeFood struct {
+	ID    int
 	Name  string
 	Price int
 }
@@ -620,7 +626,7 @@ func (s *DbService) Foods(node sql.Node) ([]NodeFood, error) {
 	var foodsList []NodeFood
 
 	for _, food := range foods {
-		foodsList = append(foodsList, NodeFood{food.Name, int(food.Price)})
+		foodsList = append(foodsList, NodeFood{int(food.ID), food.Name, int(food.Price)})
 	}
 
 	return foodsList, nil

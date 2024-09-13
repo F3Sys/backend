@@ -166,8 +166,8 @@ type PushFoodStall struct {
 }
 
 type Foods struct {
-	Name     string `json:"name"`
-	Quantity int    `json:"quantity"`
+	ID       int `json:"id"`
+	Quantity int `json:"quantity"`
 }
 
 func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
@@ -194,11 +194,15 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
+	if len(push.Foods) == 0 {
+		return echo.ErrBadRequest
+	}
+
 	// Convert push.Foods to database.Foods
 	foods := make([]database.Foods, len(push.Foods))
 	for i, food := range push.Foods {
 		foods[i] = database.Foods{
-			Name:     food.Name,
+			ID:       food.ID,
 			Quantity: food.Quantity,
 		}
 	}
@@ -291,12 +295,12 @@ func (s *Server) NodeFoodsHandler(c echo.Context) error {
 	foodsArray := make([]map[string]interface{}, len(foods))
 	for i, food := range foods {
 		foodsArray[i] = map[string]interface{}{
+			"id":    food.ID,
 			"name":  food.Name,
 			"price": food.Price,
 		}
 	}
 
-	// })
 	return c.JSON(http.StatusOK, foodsArray)
 }
 
