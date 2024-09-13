@@ -46,7 +46,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	}))
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost},
+		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
 
 	e.GET("/ip", s.PingHandler)
