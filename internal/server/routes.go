@@ -118,12 +118,6 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 	})
 }
 
-// type Push struct {
-// 	VisitorF3SiD string  `json:"f3sid"`
-// 	Name         string  `json:"name"`
-// 	Foods        []Foods `json:"foods"`
-// }
-
 type PushEntry struct {
 	VisitorF3SiD string `json:"f3sid"`
 }
