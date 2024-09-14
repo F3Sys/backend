@@ -98,17 +98,13 @@ func (s *Server) PingHandler(c echo.Context) error {
 
 func (s *Server) VisitorHandler(c echo.Context) error {
 	ip := c.RealIP()
-	addr, err := netip.ParseAddr(ip)
-	if err != nil {
-		return echo.ErrInternalServerError
-	}
 
 	sqid, err := Sqids()
 	if err != nil {
 		return echo.ErrInternalServerError
 	}
 
-	visitorF3SiD, err := s.DB.Visitor(addr, sqid)
+	visitorF3SiD, err := s.DB.Visitor(ip, sqid)
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -142,11 +138,11 @@ func (s *Server) NodePushEntryHandler(c echo.Context) error {
 
 	node := c.Get("node").(sql.Node)
 
-	if node.Type != sql.NodeTypeENTRY {
+	if node.Type != database.ENTRY {
 		return echo.ErrBadRequest
 	}
 
-	err = s.DB.PushEntry(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
+	err = s.DB.PushEntry(node, int64(pushVisitorID[0]), int64(pushVisitorID[1]))
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -184,7 +180,7 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 
 	node := c.Get("node").(sql.Node)
 
-	if node.Type != sql.NodeTypeFOODSTALL {
+	if node.Type != database.FOODSTALL {
 		return echo.ErrBadRequest
 	}
 
@@ -201,7 +197,7 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 		}
 	}
 
-	err = s.DB.PushFoodStall(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]), foods)
+	err = s.DB.PushFoodStall(node, int64(pushVisitorID[0]), int64(pushVisitorID[1]), foods)
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -233,11 +229,11 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 
 	node := c.Get("node").(sql.Node)
 
-	if node.Type != sql.NodeTypeEXHIBITION {
+	if node.Type != database.EXHIBITION {
 		return echo.ErrBadRequest
 	}
 
-	err = s.DB.PushExhibition(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
+	err = s.DB.PushExhibition(node, int64(pushVisitorID[0]), int64(pushVisitorID[1]))
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -261,7 +257,7 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 
 	node := c.Get("node").(sql.Node)
 
-	err = s.DB.StatusNode(node.ID, int32(status.Level), int32(status.ChargingTime), int32(status.DischargingTime), status.Charging)
+	err = s.DB.StatusNode(node.ID, int64(status.Level), int64(status.ChargingTime), int64(status.DischargingTime), status.Charging)
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -339,14 +335,14 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 	}
 
 	switch node.Type {
-	case sql.NodeTypeENTRY:
+	case database.ENTRY:
 		entryRow, err := s.DB.EntryRow(node, sqid)
 		if err != nil {
 			return echo.ErrBadRequest
 		}
 
 		return c.JSON(http.StatusOK, entryRow)
-	case sql.NodeTypeFOODSTALL:
+	case database.FOODSTALL:
 		foodstallRawLog, err := s.DB.FoodstallRow(node, sqid)
 		if err != nil {
 			return echo.ErrBadRequest
@@ -354,7 +350,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 
 		return c.JSON(http.StatusOK, foodstallRawLog)
 
-	case sql.NodeTypeEXHIBITION:
+	case database.EXHIBITION:
 		exhibitionRowLog, err := s.DB.ExhibitionRow(node, sqid)
 		if err != nil {
 			return echo.ErrBadRequest
@@ -381,7 +377,7 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 
 	node := c.Get("node").(sql.Node)
 
-	err = s.DB.UpdatePushNode(node, int64(push.Id), int32(push.Quantity))
+	err = s.DB.UpdatePushNode(node, int64(push.Id), int64(push.Quantity))
 	if err != nil {
 		return echo.ErrBadRequest
 	}
@@ -391,12 +387,8 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 
 func (s *Server) NodeIpHandler(c echo.Context) error {
 	ip := c.RealIP()
-	addr, err := netip.ParseAddr(ip)
-	if err != nil {
-		return echo.ErrInternalServerError
-	}
 
-	node, err := s.DB.IpNode(addr)
+	node, err := s.DB.IpNode(ip)
 	if err != nil {
 		return echo.ErrBadRequest
 	}
