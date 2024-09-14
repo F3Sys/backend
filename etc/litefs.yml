@@ -40,7 +40,7 @@ proxy:
   target: "localhost:8081"
 
   # Filename of the SQLite database you want to use for TXID tracking.
-  db: "f3sdb.db"
+  db: "f3sdb"
 
 exec:
   # Then run the application server on all nodes.
