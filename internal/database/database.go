@@ -15,6 +15,7 @@ import (
 	"github.com/sqids/sqids-go"
 
 	_ "github.com/joho/godotenv/autoload"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -139,12 +140,12 @@ func (s *DbService) Visitor(ip string, sqid *sqids.Sqids) (string, error) {
 	visitorByIp, err := queries.GetVisitorByIp(ctx, ip)
 	if err != nil {
 		if errors.Is(err, gosql.ErrNoRows) {
-			rand := rand.Int64()
+			rand := rand.Int32()
 
 			// Create a new visitor
 			visitorByIp, err := queries.CreateVisitor(ctx, sql.CreateVisitorParams{
 				Ip:     ip,
-				Random: rand,
+				Random: int64(rand),
 			})
 			if err != nil {
 				return "", err
