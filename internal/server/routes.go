@@ -106,6 +106,7 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 
 	visitorF3SiD, err := s.DB.Visitor(ip, sqid)
 	if err != nil {
+		slog.Default().Error("visitor", "error", err)
 		return echo.ErrBadRequest
 	}
 
