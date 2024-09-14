@@ -51,9 +51,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	e.GET("/ip", s.PingHandler)
 
-	e.GET("/visitor", s.VisitorHandler)
+	e.POST("/visitor", s.VisitorHandler)
 
-	e.GET("/node", s.NodeIpHandler)
+	e.POST("/node", s.NodeIpHandler)
 
 	protected := e.Group("/protected", middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
 		node, ok, err := s.DB.Password(key)
