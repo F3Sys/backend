@@ -78,7 +78,6 @@ func New() Service {
 	if err != nil {
 		slog.Default().Error("database config parse error", "error", err)
 	}
-	//defer db.Close()
 	dbInstance = &DbService{
 		DB: db,
 	}
@@ -108,7 +107,7 @@ func (s *DbService) Health() map[string]string {
 func (s *DbService) Password(key string) (sql.Node, bool, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return sql.Node{}, false, err
@@ -129,7 +128,7 @@ func (s *DbService) Password(key string) (sql.Node, bool, error) {
 func (s *DbService) Visitor(ip string, sqid *sqids.Sqids) (string, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return "", err
@@ -140,12 +139,12 @@ func (s *DbService) Visitor(ip string, sqid *sqids.Sqids) (string, error) {
 	visitorByIp, err := queries.GetVisitorByIp(ctx, ip)
 	if err != nil {
 		if errors.Is(err, gosql.ErrNoRows) {
-			rand := rand.Int32()
+			random := rand.Int32()
 
 			// Create a new visitor
 			visitorByIp, err := queries.CreateVisitor(ctx, sql.CreateVisitorParams{
 				Ip:     ip,
-				Random: int64(rand),
+				Random: int64(random),
 			})
 			if err != nil {
 				return "", err
@@ -177,7 +176,7 @@ func (s *DbService) Visitor(ip string, sqid *sqids.Sqids) (string, error) {
 func (s *DbService) PushEntry(node sql.Node, visitorID int64, visitorRandom int64) error {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return err
@@ -246,7 +245,7 @@ type Foods struct {
 func (s *DbService) PushFoodStall(node sql.Node, visitorID int64, visitorRandom int64, foods []Foods) error {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return err
@@ -300,7 +299,7 @@ func (s *DbService) PushFoodStall(node sql.Node, visitorID int64, visitorRandom 
 func (s *DbService) PushExhibition(node sql.Node, visitorID int64, visitorRandom int64) error {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return err
@@ -335,7 +334,7 @@ func (s *DbService) PushExhibition(node sql.Node, visitorID int64, visitorRandom
 func (s *DbService) UpdatePushNode(node sql.Node, id int64, quantity int64) error {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return err
@@ -365,7 +364,7 @@ func (s *DbService) UpdatePushNode(node sql.Node, id int64, quantity int64) erro
 func (s *DbService) StatusNode(nodeID int64, level int64, chargingTime int64, dischargingTime int64, charging bool) error {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return err
@@ -394,7 +393,7 @@ func (s *DbService) StatusNode(nodeID int64, level int64, chargingTime int64, di
 func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return false, err
@@ -442,7 +441,7 @@ type ExhibitionRowLog struct {
 func (s *DbService) EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return nil, err
@@ -476,7 +475,7 @@ func (s *DbService) EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, e
 func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return nil, err
@@ -515,7 +514,7 @@ func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallR
 func (s *DbService) ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return nil, err
@@ -549,7 +548,7 @@ func (s *DbService) ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]Exhibitio
 func (s *DbService) IpNode(ip string) (sql.Node, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return sql.Node{}, err
@@ -583,7 +582,7 @@ type NodeFood struct {
 func (s *DbService) Foods(node sql.Node) ([]NodeFood, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.Begin()
+	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
 		return nil, err
