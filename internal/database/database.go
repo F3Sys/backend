@@ -29,10 +29,6 @@ const (
 
 // Service represents a DbService that interacts with a database.
 type Service interface {
-	// Health returns a map of health status information.
-	// The keys and values in the map are DbService-specific.
-	Health() map[string]string
-
 	Password(key string) (sql.Node, bool, error)
 
 	Visitor(ip string, sqid *sqids.Sqids) (string, error)
@@ -84,30 +80,13 @@ func New() Service {
 	if err != nil {
 		slog.Default().Error("database config parse error", "error", err)
 	}
+	if db.Ping() != nil {
+		slog.Default().Error("database connection error", "error", err)
+	}
 	dbInstance = &DbService{
 		DB: db,
 	}
 	return dbInstance
-}
-
-// Health checks the health of the database connection by pinging the database.
-// It returns a map with keys indicating various health statistics.
-func (s *DbService) Health() map[string]string {
-	_, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	stats := make(map[string]string)
-
-	// Ping the database
-	err := s.DB.Ping()
-	if err != nil {
-		stats["status"] = "down"
-		stats["error"] = fmt.Sprintf("db down: %v", err)
-		slog.Default().Error("database down", "error", err)
-		return stats
-	}
-
-	return stats
 }
 
 func (s *DbService) Password(key string) (sql.Node, bool, error) {
