@@ -19,7 +19,7 @@ primary_region = 'nrt'
   destination = "/var/lib/litefs"
 
 [http_service]
-  internal_port = 8080
+  internal_port = 8081
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
