@@ -72,6 +72,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	protected.GET("/table", s.NodeTableHandler)
 
+	protected.GET("/count", s.NodeCountHandler)
+
 	protected.GET("/visitor/:f3sid", s.NodeVisitorLookupHandler)
 
 	protected.POST("/push/entry", s.NodePushEntryHandler)
@@ -429,4 +431,37 @@ func (s *Server) NodeIpHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"key": node.Key.String,
 	})
+}
+
+func (s *Server) NodeCountHandler(c echo.Context) error {
+	node := c.Get("node").(sql.Node)
+
+	switch node.Type {
+	case database.ENTRY:
+		count, err := s.DB.CountEntry(node)
+		if err != nil {
+			slog.Default().Error("entry row", "error", err)
+			return echo.ErrBadRequest
+		}
+
+		return c.JSON(http.StatusOK, map[string]int64{"count": count})
+	case database.FOODSTALL:
+		count, err := s.DB.CountFoodStall(node)
+		if err != nil {
+			slog.Default().Error("foodstall row", "error", err)
+			return echo.ErrBadRequest
+		}
+
+		return c.JSON(http.StatusOK, map[string]int64{"count": count})
+	case database.EXHIBITION:
+		count, err := s.DB.CountExhibition(node)
+		if err != nil {
+			slog.Default().Error("exhibition row", "error", err)
+			return echo.ErrBadRequest
+		}
+
+		return c.JSON(http.StatusOK, map[string]int64{"count": count})
+	}
+
+	return echo.ErrBadRequest
 }

@@ -10,6 +10,45 @@ import (
 	"database/sql"
 )
 
+const countEntryLogByNodeId = `-- name: CountEntryLogByNodeId :one
+SELECT COUNT(*)
+FROM entry_logs
+WHERE node_id = ?
+`
+
+func (q *Queries) CountEntryLogByNodeId(ctx context.Context, nodeID sql.NullInt64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countEntryLogByNodeId, nodeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countExhibitionLogByNodeId = `-- name: CountExhibitionLogByNodeId :one
+SELECT COUNT(*)
+FROM exhibition_logs
+WHERE node_id = ?
+`
+
+func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID sql.NullInt64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countExhibitionLogByNodeId, nodeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countFoodStallLogByNodeId = `-- name: CountFoodStallLogByNodeId :one
+SELECT SUM(quantity)
+FROM food_stall_logs
+WHERE node_id = ?
+`
+
+func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID sql.NullInt64) (sql.NullFloat64, error) {
+	row := q.db.QueryRowContext(ctx, countFoodStallLogByNodeId, nodeID)
+	var sum sql.NullFloat64
+	err := row.Scan(&sum)
+	return sum, err
+}
+
 const createBattery = `-- name: CreateBattery :exec
 INSERT INTO batteries (
         node_id,
@@ -19,7 +58,7 @@ INSERT INTO batteries (
         charging,
         updated_at
     )
-VALUES (?, ?, ?, ?, ?, now())
+VALUES (?, ?, ?, ?, ?, date('now'))
 `
 
 type CreateBatteryParams struct {
@@ -488,7 +527,7 @@ func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) er
 const updateFoodStallLog = `-- name: UpdateFoodStallLog :exec
 UPDATE food_stall_logs
 SET quantity = ?,
-    updated_at = now()
+    updated_at = date('now')
 WHERE id = ?
 `
 

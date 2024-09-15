@@ -83,10 +83,12 @@ CREATE TABLE exhibition_logs (
     FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE RESTRICT ON UPDATE CASCADE
 );
+
 -- Create indexes
 CREATE INDEX idx_nodes_key ON nodes (key);
 CREATE INDEX idx_visitors_id ON visitors (id);
 CREATE INDEX idx_visitors_id_random ON visitors (id, random);
 CREATE INDEX idx_foods_id ON foods (id);
+
 -- Enable foreign key constraints
 PRAGMA foreign_keys = ON;

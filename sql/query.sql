@@ -27,7 +27,7 @@ INSERT INTO batteries (
         charging,
         updated_at
     )
-VALUES (?, ?, ?, ?, ?, now());
+VALUES (?, ?, ?, ?, ?, date('now'));
 -- name: UpdateBattery :exec
 UPDATE batteries
 SET level = coalesce(sqlc.narg('level'), level),
@@ -100,5 +100,17 @@ LIMIT 10;
 -- name: UpdateFoodStallLog :exec
 UPDATE food_stall_logs
 SET quantity = ?,
-    updated_at = now()
+    updated_at = date('now')
 WHERE id = ?;
+-- name: CountEntryLogByNodeId :one
+SELECT COUNT(*)
+FROM entry_logs
+WHERE node_id = ?;
+-- name: CountFoodStallLogByNodeId :one
+SELECT SUM(quantity)
+FROM food_stall_logs
+WHERE node_id = ?;
+-- name: CountExhibitionLogByNodeId :one
+SELECT COUNT(*)
+FROM exhibition_logs
+WHERE node_id = ?;

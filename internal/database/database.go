@@ -58,6 +58,12 @@ type Service interface {
 	ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error)
 
 	Foods(node sql.Node) ([]NodeFood, error)
+
+	CountEntry(node sql.Node) (int64, error)
+
+	CountFoodStall(node sql.Node) (int64, error)
+
+	CountExhibition(node sql.Node) (int64, error)
 }
 
 type DbService struct {
@@ -74,7 +80,7 @@ func New() Service {
 	if dbInstance != nil {
 		return dbInstance
 	}
-	db, err := gosql.Open("sqlite3", dsn)
+	db, err := gosql.Open("sqlite3", fmt.Sprintf("file:%s?_fk=true&_journal=WAL", dsn))
 	if err != nil {
 		slog.Default().Error("database config parse error", "error", err)
 	}
@@ -604,4 +610,70 @@ func (s *DbService) Foods(node sql.Node) ([]NodeFood, error) {
 	}
 
 	return foodsList, nil
+}
+
+func (s *DbService) CountEntry(node sql.Node) (int64, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.BeginTx(ctx, nil)
+	defer q.Rollback()
+	if err != nil {
+		return 0, err
+	}
+	queries := sql.New(q)
+
+	count, err := queries.CountEntryLogByNodeId(ctx, gosql.NullInt64{
+		Int64: node.ID,
+		Valid: true,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (s *DbService) CountFoodStall(node sql.Node) (int64, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.BeginTx(ctx, nil)
+	defer q.Rollback()
+	if err != nil {
+		return 0, err
+	}
+	queries := sql.New(q)
+
+	count, err := queries.CountFoodStallLogByNodeId(ctx, gosql.NullInt64{
+		Int64: node.ID,
+		Valid: true,
+	})
+	if err != nil {
+		return 0, err
+	}
+	if !count.Valid {
+		return 0, nil
+	}
+
+	return int64(count.Float64), nil
+}
+
+func (s *DbService) CountExhibition(node sql.Node) (int64, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.BeginTx(ctx, nil)
+	defer q.Rollback()
+	if err != nil {
+		return 0, err
+	}
+	queries := sql.New(q)
+
+	count, err := queries.CountExhibitionLogByNodeId(ctx, gosql.NullInt64{
+		Int64: node.ID,
+		Valid: true,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
