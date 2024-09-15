@@ -89,6 +89,3 @@ CREATE INDEX idx_nodes_key ON nodes (key);
 CREATE INDEX idx_visitors_id ON visitors (id);
 CREATE INDEX idx_visitors_id_random ON visitors (id, random);
 CREATE INDEX idx_foods_id ON foods (id);
-
--- Enable foreign key constraints
-PRAGMA foreign_keys = ON;

@@ -2,15 +2,14 @@ package database
 
 import (
 	"context"
-	gosql "database/sql"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
-	"math/rand/v2"
 	"os"
 	"time"
 
-	sql "backend/internal/sqlc"
+	"backend/internal/sqlc"
 
 	"github.com/sqids/sqids-go"
 
@@ -29,41 +28,43 @@ const (
 
 // Service represents a DbService that interacts with a database.
 type Service interface {
-	Password(key string) (sql.Node, bool, error)
+	Password(key string) (sqlc.Node, bool, error)
 
-	Visitor(ip string, sqid *sqids.Sqids) (string, error)
+	GetVisitor(ip string, sqid *sqids.Sqids) (string, error)
 
-	IpNode(ip string) (sql.Node, error)
+	CreateVisitor(ip string, rand int64, sqid *sqids.Sqids) (string, error)
 
-	PushEntry(node sql.Node, visitorID int64, visitorRandom int64) error
+	IpNode(ip string) (sqlc.Node, error)
 
-	PushFoodStall(node sql.Node, visitorID int64, visitorRandom int64, foods []Foods) error
+	PushEntry(node sqlc.Node, visitorID int64, visitorRandom int64) error
 
-	PushExhibition(node sql.Node, visitorID int64, visitorRandom int64) error
+	PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom int64, foods []Foods) error
 
-	UpdatePushNode(node sql.Node, id int64, quantity int64) error
+	PushExhibition(node sqlc.Node, visitorID int64, visitorRandom int64) error
+
+	UpdatePushNode(node sqlc.Node, id int64, quantity int64) error
 
 	StatusNode(nodeID int64, level int64, chargingTime int64, dischargingTime int64, charging bool) error
 
 	IsVisitorFirst(visitorID int64) (bool, error)
 
-	EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, error)
+	EntryRow(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, error)
 
-	FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error)
+	FoodstallRow(node sqlc.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error)
 
-	ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error)
+	ExhibitionRow(node sqlc.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error)
 
-	Foods(node sql.Node) ([]NodeFood, error)
+	Foods(node sqlc.Node) ([]NodeFood, error)
 
-	CountEntry(node sql.Node) (int64, error)
+	CountEntry(node sqlc.Node) (int64, error)
 
-	CountFoodStall(node sql.Node) (int64, error)
+	CountFoodStall(node sqlc.Node) (int64, error)
 
-	CountExhibition(node sql.Node) (int64, error)
+	CountExhibition(node sqlc.Node) (int64, error)
 }
 
 type DbService struct {
-	DB *gosql.DB
+	DB *sql.DB
 }
 
 var (
@@ -76,7 +77,7 @@ func New() Service {
 	if dbInstance != nil {
 		return dbInstance
 	}
-	db, err := gosql.Open("sqlite3", fmt.Sprintf("file:%s?_fk=true&_journal=WAL", dsn))
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?_fk=true&_journal=WAL", dsn))
 	if err != nil {
 		slog.Default().Error("database config parse error", "error", err)
 	}
@@ -89,28 +90,28 @@ func New() Service {
 	return dbInstance
 }
 
-func (s *DbService) Password(key string) (sql.Node, bool, error) {
+func (s *DbService) Password(key string) (sqlc.Node, bool, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
-		return sql.Node{}, false, err
+		return sqlc.Node{}, false, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	nodeByKey, err := queries.GetNodeByKey(ctx, gosql.NullString{
+	nodeByKey, err := queries.GetNodeByKey(ctx, sql.NullString{
 		String: key,
 		Valid:  true,
 	})
 	if err != nil {
-		return sql.Node{}, false, err
+		return sqlc.Node{}, false, err
 	}
 
 	return nodeByKey, true, nil
 }
 
-func (s *DbService) Visitor(ip string, sqid *sqids.Sqids) (string, error) {
+func (s *DbService) GetVisitor(ip string, sqid *sqids.Sqids) (string, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -118,36 +119,11 @@ func (s *DbService) Visitor(ip string, sqid *sqids.Sqids) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	// Check if visitor exists with ip
 	visitorByIp, err := queries.GetVisitorByIp(ctx, ip)
 	if err != nil {
-		if errors.Is(err, gosql.ErrNoRows) {
-			random := rand.Int32()
-
-			// Create a new visitor
-			visitorByIp, err := queries.CreateVisitor(ctx, sql.CreateVisitorParams{
-				Ip:     ip,
-				Random: int64(random),
-			})
-			if err != nil {
-				return "", err
-			}
-			err = q.Commit()
-			if err != nil {
-				return "", err
-			}
-
-			visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByIp.ID), uint64(visitorByIp.Random)})
-			if err != nil {
-				return "", err
-			}
-
-			return visitorF3SiD, nil
-		} else {
-			return "", err
-		}
+		return "", err
 	}
 
 	visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByIp.ID), uint64(visitorByIp.Random)})
@@ -158,7 +134,39 @@ func (s *DbService) Visitor(ip string, sqid *sqids.Sqids) (string, error) {
 	return visitorF3SiD, nil
 }
 
-func (s *DbService) PushEntry(node sql.Node, visitorID int64, visitorRandom int64) error {
+func (s *DbService) CreateVisitor(ip string, rand int64, sqid *sqids.Sqids) (string, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.BeginTx(ctx, nil)
+	defer q.Rollback()
+	if err != nil {
+		return "", err
+	}
+	queries := sqlc.New(q)
+
+	// Create a new visitor
+	visitorByIp, err := queries.CreateVisitor(ctx, sqlc.CreateVisitorParams{
+		Ip:     ip,
+		Random: rand,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	err = q.Commit()
+	if err != nil {
+		return "", err
+	}
+
+	visitorF3SiD, err := sqid.Encode([]uint64{uint64(visitorByIp.ID), uint64(visitorByIp.Random)})
+	if err != nil {
+		return "", err
+	}
+
+	return visitorF3SiD, nil
+}
+
+func (s *DbService) PushEntry(node sqlc.Node, visitorID int64, visitorRandom int64) error {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -166,10 +174,10 @@ func (s *DbService) PushEntry(node sql.Node, visitorID int64, visitorRandom int6
 	if err != nil {
 		return err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
 	// Check if visitor exists
-	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sql.GetVisitorByIdAndRandomParams{
+	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sqlc.GetVisitorByIdAndRandomParams{
 		ID:     visitorID,
 		Random: visitorRandom,
 	})
@@ -177,7 +185,7 @@ func (s *DbService) PushEntry(node sql.Node, visitorID int64, visitorRandom int6
 		return err
 	}
 
-	entryLog, err := queries.GetEntryLogByVisitorId(ctx, gosql.NullInt64{
+	entryLog, err := queries.GetEntryLogByVisitorId(ctx, sql.NullInt64{
 		Int64: visitorById.ID,
 		Valid: true,
 	})
@@ -185,7 +193,7 @@ func (s *DbService) PushEntry(node sql.Node, visitorID int64, visitorRandom int6
 	var entryLogType string
 
 	if err != nil {
-		if errors.Is(err, gosql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			// First time entering
 			entryLogType = ENTERED
 		} else {
@@ -199,12 +207,12 @@ func (s *DbService) PushEntry(node sql.Node, visitorID int64, visitorRandom int6
 		}
 	}
 
-	err = queries.CreateEntryLog(ctx, sql.CreateEntryLogParams{
-		NodeID: gosql.NullInt64{
+	err = queries.CreateEntryLog(ctx, sqlc.CreateEntryLogParams{
+		NodeID: sql.NullInt64{
 			Int64: node.ID,
 			Valid: true,
 		},
-		VisitorID: gosql.NullInt64{
+		VisitorID: sql.NullInt64{
 			Int64: visitorById.ID,
 			Valid: true,
 		},
@@ -227,7 +235,7 @@ type Foods struct {
 	Quantity int
 }
 
-func (s *DbService) PushFoodStall(node sql.Node, visitorID int64, visitorRandom int64, foods []Foods) error {
+func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom int64, foods []Foods) error {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -235,10 +243,10 @@ func (s *DbService) PushFoodStall(node sql.Node, visitorID int64, visitorRandom 
 	if err != nil {
 		return err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
 	// Check if visitor exists
-	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sql.GetVisitorByIdAndRandomParams{
+	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sqlc.GetVisitorByIdAndRandomParams{
 		ID:     visitorID,
 		Random: visitorRandom,
 	})
@@ -262,10 +270,10 @@ func (s *DbService) PushFoodStall(node sql.Node, visitorID int64, visitorRandom 
 			return fmt.Errorf("food with id %d not found in map", food.ID)
 		}
 
-		err = queries.CreateFoodStallLog(ctx, sql.CreateFoodStallLogParams{
-			NodeID:    gosql.NullInt64{Int64: node.ID, Valid: true},
-			VisitorID: gosql.NullInt64{Int64: visitorById.ID, Valid: true},
-			FoodID:    gosql.NullInt64{Int64: foodById, Valid: true},
+		err = queries.CreateFoodStallLog(ctx, sqlc.CreateFoodStallLogParams{
+			NodeID:    sql.NullInt64{Int64: node.ID, Valid: true},
+			VisitorID: sql.NullInt64{Int64: visitorById.ID, Valid: true},
+			FoodID:    sql.NullInt64{Int64: foodById, Valid: true},
 			Quantity:  int64(food.Quantity),
 		})
 		if err != nil {
@@ -281,7 +289,7 @@ func (s *DbService) PushFoodStall(node sql.Node, visitorID int64, visitorRandom 
 	return nil
 }
 
-func (s *DbService) PushExhibition(node sql.Node, visitorID int64, visitorRandom int64) error {
+func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRandom int64) error {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -289,10 +297,10 @@ func (s *DbService) PushExhibition(node sql.Node, visitorID int64, visitorRandom
 	if err != nil {
 		return err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
 	// Check if visitor exists
-	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sql.GetVisitorByIdAndRandomParams{
+	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sqlc.GetVisitorByIdAndRandomParams{
 		ID:     visitorID,
 		Random: visitorRandom,
 	})
@@ -300,9 +308,9 @@ func (s *DbService) PushExhibition(node sql.Node, visitorID int64, visitorRandom
 		return err
 	}
 
-	err = queries.CreateExhibitionLog(ctx, sql.CreateExhibitionLogParams{
-		NodeID:    gosql.NullInt64{Int64: node.ID, Valid: true},
-		VisitorID: gosql.NullInt64{Int64: visitorById.ID, Valid: true},
+	err = queries.CreateExhibitionLog(ctx, sqlc.CreateExhibitionLogParams{
+		NodeID:    sql.NullInt64{Int64: node.ID, Valid: true},
+		VisitorID: sql.NullInt64{Int64: visitorById.ID, Valid: true},
 	})
 	if err != nil {
 		return err
@@ -316,7 +324,7 @@ func (s *DbService) PushExhibition(node sql.Node, visitorID int64, visitorRandom
 	return nil
 }
 
-func (s *DbService) UpdatePushNode(node sql.Node, id int64, quantity int64) error {
+func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, quantity int64) error {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -324,10 +332,10 @@ func (s *DbService) UpdatePushNode(node sql.Node, id int64, quantity int64) erro
 	if err != nil {
 		return err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
 	if node.Type == FOODSTALL {
-		err = queries.UpdateFoodStallLog(ctx, sql.UpdateFoodStallLogParams{
+		err = queries.UpdateFoodStallLog(ctx, sqlc.UpdateFoodStallLogParams{
 			Quantity: quantity,
 			ID:       id,
 		})
@@ -354,14 +362,14 @@ func (s *DbService) StatusNode(nodeID int64, level int64, chargingTime int64, di
 	if err != nil {
 		return err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	err = queries.UpdateBattery(ctx, sql.UpdateBatteryParams{
-		NodeID:          gosql.NullInt64{Int64: nodeID, Valid: true},
-		Level:           gosql.NullInt64{Int64: level, Valid: true},
-		ChargingTime:    gosql.NullInt64{Int64: chargingTime, Valid: true},
-		DischargingTime: gosql.NullInt64{Int64: dischargingTime, Valid: true},
-		Charging:        gosql.NullBool{Bool: charging, Valid: true},
+	err = queries.UpdateBattery(ctx, sqlc.UpdateBatteryParams{
+		NodeID:          sql.NullInt64{Int64: nodeID, Valid: true},
+		Level:           sql.NullInt64{Int64: level, Valid: true},
+		ChargingTime:    sql.NullInt64{Int64: chargingTime, Valid: true},
+		DischargingTime: sql.NullInt64{Int64: dischargingTime, Valid: true},
+		Charging:        sql.NullBool{Bool: charging, Valid: true},
 	})
 	if err != nil {
 		return err
@@ -383,16 +391,16 @@ func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
 	// Check if visitor exists
 	_, err = queries.GetEntryLogByVisitorId(ctx,
-		gosql.NullInt64{
+		sql.NullInt64{
 			Int64: visitorID,
 			Valid: true,
 		})
 	if err != nil {
-		if errors.Is(err, gosql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return true, nil
 		}
 		return false, err
@@ -423,7 +431,7 @@ type ExhibitionRowLog struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *DbService) EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, error) {
+func (s *DbService) EntryRow(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -431,9 +439,9 @@ func (s *DbService) EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, e
 	if err != nil {
 		return nil, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	rows, err := queries.GetEntryLogByNodeId(ctx, gosql.NullInt64{Int64: node.ID, Valid: true})
+	rows, err := queries.GetEntryLogByNodeId(ctx, sql.NullInt64{Int64: node.ID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +465,7 @@ func (s *DbService) EntryRow(node sql.Node, sqid *sqids.Sqids) ([]EntryRowLog, e
 	return rowLog, nil
 }
 
-func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error) {
+func (s *DbService) FoodstallRow(node sqlc.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -465,9 +473,9 @@ func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallR
 	if err != nil {
 		return nil, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	rows, err := queries.GetFoodStallLogByNodeId(ctx, gosql.NullInt64{Int64: node.ID, Valid: true})
+	rows, err := queries.GetFoodStallLogByNodeId(ctx, sql.NullInt64{Int64: node.ID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
@@ -496,7 +504,7 @@ func (s *DbService) FoodstallRow(node sql.Node, sqid *sqids.Sqids) ([]FoodstallR
 	return rowLog, nil
 }
 
-func (s *DbService) ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error) {
+func (s *DbService) ExhibitionRow(node sqlc.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -504,9 +512,9 @@ func (s *DbService) ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]Exhibitio
 	if err != nil {
 		return nil, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	rows, err := queries.GetExhibitionLogByNodeId(ctx, gosql.NullInt64{Int64: node.ID, Valid: true})
+	rows, err := queries.GetExhibitionLogByNodeId(ctx, sql.NullInt64{Int64: node.ID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
@@ -530,29 +538,29 @@ func (s *DbService) ExhibitionRow(node sql.Node, sqid *sqids.Sqids) ([]Exhibitio
 	return rowLog, nil
 }
 
-func (s *DbService) IpNode(ip string) (sql.Node, error) {
+func (s *DbService) IpNode(ip string) (sqlc.Node, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
 	defer q.Rollback()
 	if err != nil {
-		return sql.Node{}, err
+		return sqlc.Node{}, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	nodeByIp, err := queries.GetNodeByIp(ctx, gosql.NullString{String: ip, Valid: true})
+	nodeByIp, err := queries.GetNodeByIp(ctx, sql.NullString{String: ip, Valid: true})
 	if err != nil {
-		return sql.Node{}, err
+		return sqlc.Node{}, err
 	}
 
-	err = queries.DeleteNodeIp(ctx, gosql.NullString{String: ip, Valid: true})
+	err = queries.DeleteNodeIp(ctx, sql.NullString{String: ip, Valid: true})
 	if err != nil {
-		return sql.Node{}, err
+		return sqlc.Node{}, err
 	}
 
 	err = q.Commit()
 	if err != nil {
-		return sql.Node{}, err
+		return sqlc.Node{}, err
 	}
 
 	return nodeByIp, nil
@@ -564,7 +572,7 @@ type NodeFood struct {
 	Price int
 }
 
-func (s *DbService) Foods(node sql.Node) ([]NodeFood, error) {
+func (s *DbService) Foods(node sqlc.Node) ([]NodeFood, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -572,9 +580,9 @@ func (s *DbService) Foods(node sql.Node) ([]NodeFood, error) {
 	if err != nil {
 		return nil, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	foods, err := queries.GetFoodsByNodeId(ctx, gosql.NullInt64{
+	foods, err := queries.GetFoodsByNodeId(ctx, sql.NullInt64{
 		Int64: node.ID,
 		Valid: true,
 	})
@@ -591,7 +599,7 @@ func (s *DbService) Foods(node sql.Node) ([]NodeFood, error) {
 	return foodsList, nil
 }
 
-func (s *DbService) CountEntry(node sql.Node) (int64, error) {
+func (s *DbService) CountEntry(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -599,9 +607,9 @@ func (s *DbService) CountEntry(node sql.Node) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	count, err := queries.CountEntryLogByNodeId(ctx, gosql.NullInt64{
+	count, err := queries.CountEntryLogByNodeId(ctx, sql.NullInt64{
 		Int64: node.ID,
 		Valid: true,
 	})
@@ -612,7 +620,7 @@ func (s *DbService) CountEntry(node sql.Node) (int64, error) {
 	return count, nil
 }
 
-func (s *DbService) CountFoodStall(node sql.Node) (int64, error) {
+func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -620,9 +628,9 @@ func (s *DbService) CountFoodStall(node sql.Node) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	count, err := queries.CountFoodStallLogByNodeId(ctx, gosql.NullInt64{
+	count, err := queries.CountFoodStallLogByNodeId(ctx, sql.NullInt64{
 		Int64: node.ID,
 		Valid: true,
 	})
@@ -636,7 +644,7 @@ func (s *DbService) CountFoodStall(node sql.Node) (int64, error) {
 	return int64(count.Float64), nil
 }
 
-func (s *DbService) CountExhibition(node sql.Node) (int64, error) {
+func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.BeginTx(ctx, nil)
@@ -644,9 +652,9 @@ func (s *DbService) CountExhibition(node sql.Node) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	queries := sql.New(q)
+	queries := sqlc.New(q)
 
-	count, err := queries.CountExhibitionLogByNodeId(ctx, gosql.NullInt64{
+	count, err := queries.CountExhibitionLogByNodeId(ctx, sql.NullInt64{
 		Int64: node.ID,
 		Valid: true,
 	})

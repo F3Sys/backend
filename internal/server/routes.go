@@ -2,8 +2,10 @@ package server
 
 import (
 	"backend/internal/database"
-	sql "backend/internal/sqlc"
+	"backend/internal/sqlc"
+	"database/sql"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"net/netip"
 
@@ -51,7 +53,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	e.GET("/ip", s.PingHandler)
 
-	e.POST("/visitor", s.VisitorHandler)
+	e.GET("/visitor", s.GetVisitorHandler)
+
+	e.POST("/visitor", s.PostVisitorHandler)
 
 	e.POST("/node", s.NodeIpHandler)
 
@@ -99,7 +103,7 @@ func (s *Server) PingHandler(c echo.Context) error {
 	return c.String(http.StatusOK, addr.String())
 }
 
-func (s *Server) VisitorHandler(c echo.Context) error {
+func (s *Server) GetVisitorHandler(c echo.Context) error {
 	ip := c.RealIP()
 
 	sqid, err := Sqids()
@@ -108,7 +112,32 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	visitorF3SiD, err := s.DB.Visitor(ip, sqid)
+	visitorF3SiD, err := s.DB.GetVisitor(ip, sqid)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return c.NoContent(http.StatusNotFound)
+		}
+		slog.Default().Error("visitor", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"f3sid": visitorF3SiD,
+	})
+}
+
+func (s *Server) PostVisitorHandler(c echo.Context) error {
+	ip := c.RealIP()
+
+	sqid, err := Sqids()
+	if err != nil {
+		slog.Default().Error("sqids initialization", "error", err)
+		return echo.ErrInternalServerError
+	}
+
+	random := rand.Int32()
+
+	visitorF3SiD, err := s.DB.CreateVisitor(ip, int64(random), sqid)
 	if err != nil {
 		slog.Default().Error("visitor", "error", err)
 		return echo.ErrBadRequest
@@ -144,7 +173,7 @@ func (s *Server) NodePushEntryHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	node := c.Get("node").(sql.Node)
+	node := c.Get("node").(sqlc.Node)
 
 	if node.Type != database.ENTRY {
 		slog.Default().Error("node type", "error", "invalid node type")
@@ -191,7 +220,7 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	node := c.Get("node").(sql.Node)
+	node := c.Get("node").(sqlc.Node)
 
 	if node.Type != database.FOODSTALL {
 		slog.Default().Error("node type", "error", "invalid node type")
@@ -246,7 +275,7 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	node := c.Get("node").(sql.Node)
+	node := c.Get("node").(sqlc.Node)
 
 	if node.Type != database.EXHIBITION {
 		slog.Default().Error("node type", "error", "invalid node type")
@@ -277,7 +306,7 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	node := c.Get("node").(sql.Node)
+	node := c.Get("node").(sqlc.Node)
 
 	err = s.DB.StatusNode(node.ID, int64(status.Level), int64(status.ChargingTime), int64(status.DischargingTime), status.Charging)
 	if err != nil {
@@ -289,7 +318,7 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 }
 
 func (s *Server) NodeInfoHandler(c echo.Context) error {
-	node := c.Get("node").(sql.Node)
+	node := c.Get("node").(sqlc.Node)
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"name": node.Name,
@@ -298,7 +327,7 @@ func (s *Server) NodeInfoHandler(c echo.Context) error {
 }
 
 func (s *Server) NodeFoodsHandler(c echo.Context) error {
-	node := c.Get("node").(sql.Node)
+	node := c.Get("node").(sqlc.Node)
 
 	foods, err := s.DB.Foods(node)
 	if err != nil {
@@ -355,7 +384,7 @@ func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
 }
 
 func (s *Server) NodeTableHandler(c echo.Context) error {
-	node := c.Get("node").(sql.Node)
+	node := c.Get("node").(sqlc.Node)
 
 	sqid, err := Sqids()
 	if err != nil {
@@ -408,7 +437,7 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	node := c.Get("node").(sql.Node)
+	node := c.Get("node").(sqlc.Node)
 
 	err = s.DB.UpdatePushNode(node, int64(push.Id), int64(push.Quantity))
 	if err != nil {
@@ -434,7 +463,7 @@ func (s *Server) NodeIpHandler(c echo.Context) error {
 }
 
 func (s *Server) NodeCountHandler(c echo.Context) error {
-	node := c.Get("node").(sql.Node)
+	node := c.Get("node").(sqlc.Node)
 
 	switch node.Type {
 	case database.ENTRY:
