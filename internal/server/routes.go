@@ -27,10 +27,18 @@ func Sqids() (*sqids.Sqids, error) {
 	return sqid, nil
 }
 
+type (
+	Host struct {
+		Echo *echo.Echo
+	}
+)
+
 func (s *Server) RegisterRoutes() http.Handler {
-	e := echo.New()
-	e.IPExtractor = echo.ExtractIPFromXFFHeader()
-	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+	hosts := map[string]*Host{}
+
+	api := echo.New()
+	api.IPExtractor = echo.ExtractIPFromXFFHeader()
+	api.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:      true,
 		LogStatus:   true,
 		LogRemoteIP: true,
@@ -46,20 +54,20 @@ func (s *Server) RegisterRoutes() http.Handler {
 			return nil
 		},
 	}))
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+	api.Use(middleware.Recover())
+	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
 
-	e.GET("/ip", s.PingHandler)
+	api.GET("/ip", s.PingHandler)
 
-	e.GET("/visitor", s.GetVisitorHandler)
+	api.GET("/visitor", s.GetVisitorHandler)
 
-	e.POST("/visitor", s.PostVisitorHandler)
+	api.POST("/visitor", s.PostVisitorHandler)
 
-	e.POST("/node", s.NodeIpHandler)
+	api.POST("/node", s.NodeIpHandler)
 
-	protected := e.Group("/protected", middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
+	protected := api.Group("/protected", middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
 		node, ok, err := s.DB.Password(key)
 		if err != nil {
 			return false, nil
@@ -89,6 +97,23 @@ func (s *Server) RegisterRoutes() http.Handler {
 	protected.PATCH("/push", s.NodeUpdatePushHandler)
 
 	protected.PATCH("/status", s.NodeStatusHandler)
+
+	hosts["api.aicj.io"] = &Host{api}
+
+	e := echo.New()
+	e.Any("/*", func(c echo.Context) (err error) {
+		req := c.Request()
+		res := c.Response()
+		host := hosts[req.Host]
+
+		if host == nil {
+			err = echo.ErrNotFound
+		} else {
+			host.Echo.ServeHTTP(res, req)
+		}
+
+		return
+	})
 
 	return e
 }
