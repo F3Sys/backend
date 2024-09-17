@@ -14,7 +14,7 @@ import (
 	"github.com/sqids/sqids-go"
 
 	_ "github.com/joho/godotenv/autoload"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
 const (
@@ -68,22 +68,29 @@ type DbService struct {
 }
 
 var (
-	dsn        = os.Getenv("DSN")
-	dbInstance *DbService
+	databaseName = os.Getenv("TURSO_DATABASE")
+	authToken    = os.Getenv("TURSO_API_TOKEN")
+	dbInstance   *DbService
 )
 
 func New() Service {
-	// Reuse Connection
 	if dbInstance != nil {
 		return dbInstance
 	}
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?_fk=true&_journal=WAL", dsn))
+
+	url := fmt.Sprintf("libsql://%s.turso.io?authToken=%s", databaseName, authToken)
+
+	db, err := sql.Open("libsql", url)
 	if err != nil {
-		slog.Default().Error("database config parse error", "error", err)
+		slog.Default().Error("failed to open db", "url", url, "error", err)
+		os.Exit(1)
 	}
+
 	if db.Ping() != nil {
-		slog.Default().Error("database connection error", "error", err)
+		slog.Default().Error("failed to ping db", "error", err)
+		os.Exit(1)
 	}
+
 	dbInstance = &DbService{
 		DB: db,
 	}
