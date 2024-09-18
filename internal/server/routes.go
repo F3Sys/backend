@@ -33,11 +33,16 @@ type (
 	}
 )
 
+func RealIP(c echo.Context) string {
+	ip := c.Request().Header.Get("Fly-Client-IP")
+
+	return ip
+}
+
 func (s *Server) RegisterRoutes() http.Handler {
 	hosts := map[string]*Host{}
 
 	api := echo.New()
-	api.IPExtractor = echo.ExtractIPFromXFFHeader()
 	api.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:      true,
 		LogMethod:   true,
@@ -119,7 +124,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 }
 
 func (s *Server) PingHandler(c echo.Context) error {
-	ip := c.RealIP()
+	ip := RealIP(c)
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
 		slog.Default().Error("ParseAddr", "error", err)
@@ -129,7 +134,7 @@ func (s *Server) PingHandler(c echo.Context) error {
 }
 
 func (s *Server) VisitorHandler(c echo.Context) error {
-	ip := c.RealIP()
+	ip := RealIP(c)
 
 	sqid, err := Sqids()
 	if err != nil {
@@ -468,7 +473,7 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 }
 
 func (s *Server) NodeIpHandler(c echo.Context) error {
-	ip := c.RealIP()
+	ip := RealIP(c)
 
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
