@@ -104,15 +104,13 @@ func (s *Server) RegisterRoutes() http.Handler {
 	e.Any("/*", func(c echo.Context) (err error) {
 		req := c.Request()
 		res := c.Response()
-		// host := hosts[req.Host]
+		host := hosts[req.Host]
 
-		// if host == nil {
-		// 	err = echo.ErrNotFound
-		// } else {
-		// 	host.Echo.ServeHTTP(res, req)
-		// }
-
-		hosts["api.aicj.io"].Echo.ServeHTTP(res, req)
+		if host == nil {
+			err = echo.ErrNotFound
+		} else {
+			host.Echo.ServeHTTP(res, req)
+		}
 
 		return
 	})
