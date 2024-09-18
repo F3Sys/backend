@@ -2,49 +2,43 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/netip"
 	"os"
 	"time"
 
 	"backend/internal/sqlc"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sqids/sqids-go"
 
 	_ "github.com/joho/godotenv/autoload"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
-const (
-	ENTRY      = "ENTRY"
-	FOODSTALL  = "FOODSTALL"
-	EXHIBITION = "EXHIBITION"
-
-	ENTERED = "ENTERED"
-	LEFT    = "LEFT"
-)
-
 // Service represents a DbService that interacts with a database.
 type Service interface {
 	Password(key string) (sqlc.Node, bool, error)
 
-	GetVisitor(ip string, sqid *sqids.Sqids) (string, error)
+	GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 
-	CreateVisitor(ip string, rand int64, sqid *sqids.Sqids) (string, error)
+	CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) (string, error)
 
-	IpNode(ip string) (sqlc.Node, error)
+	IpNode(ip netip.Addr) (sqlc.Node, error)
 
-	PushEntry(node sqlc.Node, visitorID int64, visitorRandom int64) error
+	PushEntry(node sqlc.Node, visitorID int64, visitorRandom int32) error
 
-	PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom int64, foods []Foods) error
+	PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom int32, foods []Foods) error
 
-	PushExhibition(node sqlc.Node, visitorID int64, visitorRandom int64) error
+	PushExhibition(node sqlc.Node, visitorID int64, visitorRandom int32) error
 
-	UpdatePushNode(node sqlc.Node, id int64, quantity int64) error
+	UpdatePushNode(node sqlc.Node, id int64, quantity int32) error
 
-	StatusNode(nodeID int64, level int64, chargingTime int64, dischargingTime int64, charging bool) error
+	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
 
 	IsVisitorFirst(visitorID int64) (bool, error)
 
@@ -64,13 +58,12 @@ type Service interface {
 }
 
 type DbService struct {
-	DB *sql.DB
+	DB *pgxpool.Pool
 }
 
 var (
-	databaseName = os.Getenv("TURSO_DATABASE")
-	authToken    = os.Getenv("TURSO_API_TOKEN")
-	dbInstance   *DbService
+	databaseURL = os.Getenv("DATABASE_URL")
+	dbInstance  *DbService
 )
 
 func New() Service {
@@ -78,21 +71,20 @@ func New() Service {
 		return dbInstance
 	}
 
-	url := fmt.Sprintf("libsql://%s.turso.io?authToken=%s", databaseName, authToken)
-
-	db, err := sql.Open("libsql", url)
+	dbpool, err := pgxpool.New(context.Background(), databaseURL)
 	if err != nil {
-		slog.Default().Error("failed to open db", "url", url, "error", err)
+		slog.Default().Error("failed to create connection pool", "error", err)
 		os.Exit(1)
 	}
+	// defer dbpool.Close()
 
-	if db.Ping() != nil {
+	if dbpool.Ping(context.Background()) != nil {
 		slog.Default().Error("failed to ping db", "error", err)
 		os.Exit(1)
 	}
 
 	dbInstance = &DbService{
-		DB: db,
+		DB: dbpool,
 	}
 	return dbInstance
 }
@@ -100,14 +92,14 @@ func New() Service {
 func (s *DbService) Password(key string) (sqlc.Node, bool, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return sqlc.Node{}, false, err
 	}
 	queries := sqlc.New(q)
 
-	nodeByKey, err := queries.GetNodeByKey(ctx, sql.NullString{
+	nodeByKey, err := queries.GetNodeByKey(ctx, pgtype.Text{
 		String: key,
 		Valid:  true,
 	})
@@ -118,11 +110,11 @@ func (s *DbService) Password(key string) (sqlc.Node, bool, error) {
 	return nodeByKey, true, nil
 }
 
-func (s *DbService) GetVisitor(ip string, sqid *sqids.Sqids) (string, error) {
+func (s *DbService) GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -141,11 +133,11 @@ func (s *DbService) GetVisitor(ip string, sqid *sqids.Sqids) (string, error) {
 	return visitorF3SiD, nil
 }
 
-func (s *DbService) CreateVisitor(ip string, rand int64, sqid *sqids.Sqids) (string, error) {
+func (s *DbService) CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) (string, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -160,7 +152,7 @@ func (s *DbService) CreateVisitor(ip string, rand int64, sqid *sqids.Sqids) (str
 		return "", err
 	}
 
-	err = q.Commit()
+	err = q.Commit(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -173,11 +165,11 @@ func (s *DbService) CreateVisitor(ip string, rand int64, sqid *sqids.Sqids) (str
 	return visitorF3SiD, nil
 }
 
-func (s *DbService) PushEntry(node sqlc.Node, visitorID int64, visitorRandom int64) error {
+func (s *DbService) PushEntry(node sqlc.Node, visitorID int64, visitorRandom int32) error {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
@@ -192,34 +184,34 @@ func (s *DbService) PushEntry(node sqlc.Node, visitorID int64, visitorRandom int
 		return err
 	}
 
-	entryLog, err := queries.GetEntryLogByVisitorId(ctx, sql.NullInt64{
+	entryLog, err := queries.GetEntryLogByVisitorId(ctx, pgtype.Int8{
 		Int64: visitorById.ID,
 		Valid: true,
 	})
 
-	var entryLogType string
+	var entryLogType sqlc.EntryLogsType
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			// First time entering
-			entryLogType = ENTERED
+			entryLogType = sqlc.EntryLogsTypeENTERED
 		} else {
 			return err
 		}
 	} else {
-		if entryLog.Type == ENTERED {
-			entryLogType = LEFT
+		if entryLog.Type == sqlc.EntryLogsTypeENTERED {
+			entryLogType = sqlc.EntryLogsTypeLEFT
 		} else {
-			entryLogType = ENTERED
+			entryLogType = sqlc.EntryLogsTypeENTERED
 		}
 	}
 
 	err = queries.CreateEntryLog(ctx, sqlc.CreateEntryLogParams{
-		NodeID: sql.NullInt64{
+		NodeID: pgtype.Int8{
 			Int64: node.ID,
 			Valid: true,
 		},
-		VisitorID: sql.NullInt64{
+		VisitorID: pgtype.Int8{
 			Int64: visitorById.ID,
 			Valid: true,
 		},
@@ -229,7 +221,7 @@ func (s *DbService) PushEntry(node sqlc.Node, visitorID int64, visitorRandom int
 		return err
 	}
 
-	err = q.Commit()
+	err = q.Commit(ctx)
 	if err != nil {
 		return err
 	}
@@ -242,11 +234,11 @@ type Foods struct {
 	Quantity int
 }
 
-func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom int64, foods []Foods) error {
+func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom int32, foods []Foods) error {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
@@ -278,17 +270,17 @@ func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom
 		}
 
 		err = queries.CreateFoodStallLog(ctx, sqlc.CreateFoodStallLogParams{
-			NodeID:    sql.NullInt64{Int64: node.ID, Valid: true},
-			VisitorID: sql.NullInt64{Int64: visitorById.ID, Valid: true},
-			FoodID:    sql.NullInt64{Int64: foodById, Valid: true},
-			Quantity:  int64(food.Quantity),
+			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
+			VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
+			FoodID:    pgtype.Int8{Int64: foodById, Valid: true},
+			Quantity:  int32(food.Quantity),
 		})
 		if err != nil {
 			return err
 		}
 	}
 
-	err = q.Commit()
+	err = q.Commit(ctx)
 	if err != nil {
 		return err
 	}
@@ -296,11 +288,11 @@ func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom
 	return nil
 }
 
-func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRandom int64) error {
+func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRandom int32) error {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
@@ -316,14 +308,14 @@ func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRando
 	}
 
 	err = queries.CreateExhibitionLog(ctx, sqlc.CreateExhibitionLogParams{
-		NodeID:    sql.NullInt64{Int64: node.ID, Valid: true},
-		VisitorID: sql.NullInt64{Int64: visitorById.ID, Valid: true},
+		NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
+		VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
 	})
 	if err != nil {
 		return err
 	}
 
-	err = q.Commit()
+	err = q.Commit(ctx)
 	if err != nil {
 		return err
 	}
@@ -331,17 +323,17 @@ func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRando
 	return nil
 }
 
-func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, quantity int64) error {
+func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, quantity int32) error {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
 	queries := sqlc.New(q)
 
-	if node.Type == FOODSTALL {
+	if node.Type == sqlc.NodeTypeFOODSTALL {
 		err = queries.UpdateFoodStallLog(ctx, sqlc.UpdateFoodStallLogParams{
 			Quantity: quantity,
 			ID:       id,
@@ -350,7 +342,7 @@ func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, quantity int64) err
 			return err
 		}
 
-		err = q.Commit()
+		err = q.Commit(ctx)
 		if err != nil {
 			return err
 		}
@@ -361,28 +353,28 @@ func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, quantity int64) err
 	return nil
 }
 
-func (s *DbService) StatusNode(nodeID int64, level int64, chargingTime int64, dischargingTime int64, charging bool) error {
+func (s *DbService) StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
 	queries := sqlc.New(q)
 
 	err = queries.UpdateBattery(ctx, sqlc.UpdateBatteryParams{
-		NodeID:          sql.NullInt64{Int64: nodeID, Valid: true},
-		Level:           sql.NullInt64{Int64: level, Valid: true},
-		ChargingTime:    sql.NullInt64{Int64: chargingTime, Valid: true},
-		DischargingTime: sql.NullInt64{Int64: dischargingTime, Valid: true},
-		Charging:        sql.NullBool{Bool: charging, Valid: true},
+		NodeID:          pgtype.Int8{Int64: nodeID, Valid: true},
+		Level:           pgtype.Int4{Int32: level, Valid: true},
+		ChargingTime:    pgtype.Int4{Int32: chargingTime, Valid: true},
+		DischargingTime: pgtype.Int4{Int32: dischargingTime, Valid: true},
+		Charging:        pgtype.Bool{Bool: charging, Valid: true},
 	})
 	if err != nil {
 		return err
 	}
 
-	err = q.Commit()
+	err = q.Commit(ctx)
 	if err != nil {
 		return err
 	}
@@ -393,8 +385,8 @@ func (s *DbService) StatusNode(nodeID int64, level int64, chargingTime int64, di
 func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -402,12 +394,12 @@ func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 
 	// Check if visitor exists
 	_, err = queries.GetEntryLogByVisitorId(ctx,
-		sql.NullInt64{
+		pgtype.Int8{
 			Int64: visitorID,
 			Valid: true,
 		})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return true, nil
 		}
 		return false, err
@@ -427,8 +419,8 @@ type FoodstallRowLog struct {
 	Id        int64     `json:"id"`
 	F3SiD     string    `json:"f3sid"`
 	FoodName  string    `json:"name"`
-	Quantity  int64     `json:"quantity"`
-	Price     int64     `json:"price"`
+	Quantity  int32     `json:"quantity"`
+	Price     int32     `json:"price"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -441,14 +433,14 @@ type ExhibitionRowLog struct {
 func (s *DbService) EntryRow(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return nil, err
 	}
 	queries := sqlc.New(q)
 
-	rows, err := queries.GetEntryLogByNodeId(ctx, sql.NullInt64{Int64: node.ID, Valid: true})
+	rows, err := queries.GetEntryLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
@@ -466,7 +458,7 @@ func (s *DbService) EntryRow(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, 
 			return nil, err
 		}
 
-		rowLog = append(rowLog, EntryRowLog{row.ID, visitorF3SiD, row.Type, row.CreatedAt.Time})
+		rowLog = append(rowLog, EntryRowLog{row.ID, visitorF3SiD, string(row.Type), row.CreatedAt.Time})
 	}
 
 	return rowLog, nil
@@ -475,14 +467,14 @@ func (s *DbService) EntryRow(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, 
 func (s *DbService) FoodstallRow(node sqlc.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return nil, err
 	}
 	queries := sqlc.New(q)
 
-	rows, err := queries.GetFoodStallLogByNodeId(ctx, sql.NullInt64{Int64: node.ID, Valid: true})
+	rows, err := queries.GetFoodStallLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
@@ -514,14 +506,14 @@ func (s *DbService) FoodstallRow(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstall
 func (s *DbService) ExhibitionRow(node sqlc.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return nil, err
 	}
 	queries := sqlc.New(q)
 
-	rows, err := queries.GetExhibitionLogByNodeId(ctx, sql.NullInt64{Int64: node.ID, Valid: true})
+	rows, err := queries.GetExhibitionLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
@@ -545,27 +537,27 @@ func (s *DbService) ExhibitionRow(node sqlc.Node, sqid *sqids.Sqids) ([]Exhibiti
 	return rowLog, nil
 }
 
-func (s *DbService) IpNode(ip string) (sqlc.Node, error) {
+func (s *DbService) IpNode(ip netip.Addr) (sqlc.Node, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return sqlc.Node{}, err
 	}
 	queries := sqlc.New(q)
 
-	nodeByIp, err := queries.GetNodeByIp(ctx, sql.NullString{String: ip, Valid: true})
+	nodeByIp, err := queries.GetNodeByIp(ctx, &ip)
 	if err != nil {
 		return sqlc.Node{}, err
 	}
 
-	err = queries.DeleteNodeIp(ctx, sql.NullString{String: ip, Valid: true})
+	err = queries.DeleteNodeIp(ctx, &ip)
 	if err != nil {
 		return sqlc.Node{}, err
 	}
 
-	err = q.Commit()
+	err = q.Commit(ctx)
 	if err != nil {
 		return sqlc.Node{}, err
 	}
@@ -582,14 +574,14 @@ type NodeFood struct {
 func (s *DbService) Foods(node sqlc.Node) ([]NodeFood, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return nil, err
 	}
 	queries := sqlc.New(q)
 
-	foods, err := queries.GetFoodsByNodeId(ctx, sql.NullInt64{
+	foods, err := queries.GetFoodsByNodeId(ctx, pgtype.Int8{
 		Int64: node.ID,
 		Valid: true,
 	})
@@ -609,14 +601,14 @@ func (s *DbService) Foods(node sqlc.Node) ([]NodeFood, error) {
 func (s *DbService) CountEntry(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return 0, err
 	}
 	queries := sqlc.New(q)
 
-	count, err := queries.CountEntryLogByNodeId(ctx, sql.NullInt64{
+	count, err := queries.CountEntryLogByNodeId(ctx, pgtype.Int8{
 		Int64: node.ID,
 		Valid: true,
 	})
@@ -630,38 +622,35 @@ func (s *DbService) CountEntry(node sqlc.Node) (int64, error) {
 func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return 0, err
 	}
 	queries := sqlc.New(q)
 
-	count, err := queries.CountFoodStallLogByNodeId(ctx, sql.NullInt64{
+	count, err := queries.CountFoodStallLogByNodeId(ctx, pgtype.Int8{
 		Int64: node.ID,
 		Valid: true,
 	})
 	if err != nil {
 		return 0, err
 	}
-	if !count.Valid {
-		return 0, nil
-	}
 
-	return int64(count.Float64), nil
+	return count, nil
 }
 
 func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
-	q, err := s.DB.BeginTx(ctx, nil)
-	defer q.Rollback()
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return 0, err
 	}
 	queries := sqlc.New(q)
 
-	count, err := queries.CountExhibitionLogByNodeId(ctx, sql.NullInt64{
+	count, err := queries.CountExhibitionLogByNodeId(ctx, pgtype.Int8{
 		Int64: node.ID,
 		Valid: true,
 	})

@@ -3,12 +3,12 @@ package server
 import (
 	"backend/internal/database"
 	"backend/internal/sqlc"
-	"database/sql"
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
 	"net/netip"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sqids/sqids-go"
@@ -40,12 +40,14 @@ func (s *Server) RegisterRoutes() http.Handler {
 	api.IPExtractor = echo.ExtractIPFromXFFHeader()
 	api.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:      true,
+		LogMethod:   true,
 		LogStatus:   true,
 		LogRemoteIP: true,
 		LogLatency:  true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			slog.Default().Info("request",
 				"URI", v.URI,
+				"method", v.Method,
 				"status", v.Status,
 				"remote_ip", v.RemoteIP,
 				"latency", v.Latency,
@@ -61,9 +63,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	api.GET("/ip", s.PingHandler)
 
-	api.GET("/visitor", s.GetVisitorHandler)
-
-	api.POST("/visitor", s.PostVisitorHandler)
+	api.GET("/visitor", s.VisitorHandler)
 
 	api.POST("/node", s.NodeIpHandler)
 
@@ -104,13 +104,15 @@ func (s *Server) RegisterRoutes() http.Handler {
 	e.Any("/*", func(c echo.Context) (err error) {
 		req := c.Request()
 		res := c.Response()
-		host := hosts[req.Host]
+		// host := hosts[req.Host]
 
-		if host == nil {
-			err = echo.ErrNotFound
-		} else {
-			host.Echo.ServeHTTP(res, req)
-		}
+		// if host == nil {
+		// 	err = echo.ErrNotFound
+		// } else {
+		// 	host.Echo.ServeHTTP(res, req)
+		// }
+
+		hosts["api.aicj.io"].Echo.ServeHTTP(res, req)
 
 		return
 	})
@@ -128,7 +130,7 @@ func (s *Server) PingHandler(c echo.Context) error {
 	return c.String(http.StatusOK, addr.String())
 }
 
-func (s *Server) GetVisitorHandler(c echo.Context) error {
+func (s *Server) VisitorHandler(c echo.Context) error {
 	ip := c.RealIP()
 
 	sqid, err := Sqids()
@@ -137,33 +139,27 @@ func (s *Server) GetVisitorHandler(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	visitorF3SiD, err := s.DB.GetVisitor(ip, sqid)
+	addr, err := netip.ParseAddr(ip)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return c.NoContent(http.StatusNotFound)
-		}
-		slog.Default().Error("visitor", "error", err)
+		slog.Default().Error("ParseAddr", "error", err)
 		return echo.ErrBadRequest
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"f3sid": visitorF3SiD,
-	})
-}
-
-func (s *Server) PostVisitorHandler(c echo.Context) error {
-	ip := c.RealIP()
-
-	sqid, err := Sqids()
+	visitorF3SiD, err := s.DB.GetVisitor(addr, sqid)
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
-		return echo.ErrInternalServerError
-	}
+		if err == pgx.ErrNoRows {
+			random := rand.Int32()
 
-	random := rand.Int32()
+			visitorF3SiD, err := s.DB.CreateVisitor(addr, random, sqid)
+			if err != nil {
+				slog.Default().Error("visitor", "error", err)
+				return echo.ErrBadRequest
+			}
 
-	visitorF3SiD, err := s.DB.CreateVisitor(ip, int64(random), sqid)
-	if err != nil {
+			return c.JSON(http.StatusOK, map[string]string{
+				"f3sid": visitorF3SiD,
+			})
+		}
 		slog.Default().Error("visitor", "error", err)
 		return echo.ErrBadRequest
 	}
@@ -200,12 +196,12 @@ func (s *Server) NodePushEntryHandler(c echo.Context) error {
 
 	node := c.Get("node").(sqlc.Node)
 
-	if node.Type != database.ENTRY {
+	if node.Type != sqlc.NodeTypeENTRY {
 		slog.Default().Error("node type", "error", "invalid node type")
 		return echo.ErrBadRequest
 	}
 
-	err = s.DB.PushEntry(node, int64(pushVisitorID[0]), int64(pushVisitorID[1]))
+	err = s.DB.PushEntry(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
 	if err != nil {
 		slog.Default().Error("push entry", "error", err)
 		return echo.ErrBadRequest
@@ -247,7 +243,7 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 
 	node := c.Get("node").(sqlc.Node)
 
-	if node.Type != database.FOODSTALL {
+	if node.Type != sqlc.NodeTypeFOODSTALL {
 		slog.Default().Error("node type", "error", "invalid node type")
 		return echo.ErrBadRequest
 	}
@@ -266,7 +262,7 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 		}
 	}
 
-	err = s.DB.PushFoodStall(node, int64(pushVisitorID[0]), int64(pushVisitorID[1]), foods)
+	err = s.DB.PushFoodStall(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]), foods)
 	if err != nil {
 		slog.Default().Error("push foodstall", "error", err)
 		return echo.ErrBadRequest
@@ -302,12 +298,12 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 
 	node := c.Get("node").(sqlc.Node)
 
-	if node.Type != database.EXHIBITION {
+	if node.Type != sqlc.NodeTypeEXHIBITION {
 		slog.Default().Error("node type", "error", "invalid node type")
 		return echo.ErrBadRequest
 	}
 
-	err = s.DB.PushExhibition(node, int64(pushVisitorID[0]), int64(pushVisitorID[1]))
+	err = s.DB.PushExhibition(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
 	if err != nil {
 		slog.Default().Error("push exhibition", "error", err)
 		return echo.ErrBadRequest
@@ -333,7 +329,7 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 
 	node := c.Get("node").(sqlc.Node)
 
-	err = s.DB.StatusNode(node.ID, int64(status.Level), int64(status.ChargingTime), int64(status.DischargingTime), status.Charging)
+	err = s.DB.StatusNode(node.ID, int32(status.Level), int32(status.ChargingTime), int32(status.DischargingTime), status.Charging)
 	if err != nil {
 		slog.Default().Error("status", "error", err)
 		return echo.ErrBadRequest
@@ -418,7 +414,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 	}
 
 	switch node.Type {
-	case database.ENTRY:
+	case sqlc.NodeTypeENTRY:
 		entryRow, err := s.DB.EntryRow(node, sqid)
 		if err != nil {
 			slog.Default().Error("entry row", "error", err)
@@ -426,7 +422,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 		}
 
 		return c.JSON(http.StatusOK, entryRow)
-	case database.FOODSTALL:
+	case sqlc.NodeTypeFOODSTALL:
 		foodstallRawLog, err := s.DB.FoodstallRow(node, sqid)
 		if err != nil {
 			slog.Default().Error("foodstall row", "error", err)
@@ -435,7 +431,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 
 		return c.JSON(http.StatusOK, foodstallRawLog)
 
-	case database.EXHIBITION:
+	case sqlc.NodeTypeEXHIBITION:
 		exhibitionRowLog, err := s.DB.ExhibitionRow(node, sqid)
 		if err != nil {
 			slog.Default().Error("exhibition row", "error", err)
@@ -464,7 +460,7 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 
 	node := c.Get("node").(sqlc.Node)
 
-	err = s.DB.UpdatePushNode(node, int64(push.Id), int64(push.Quantity))
+	err = s.DB.UpdatePushNode(node, int64(push.Id), int32(push.Quantity))
 	if err != nil {
 		slog.Default().Error("update push", "error", err)
 		return echo.ErrBadRequest
@@ -476,7 +472,13 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 func (s *Server) NodeIpHandler(c echo.Context) error {
 	ip := c.RealIP()
 
-	node, err := s.DB.IpNode(ip)
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		slog.Default().Error("ParseAddr", "error", err)
+		return echo.ErrInternalServerError
+	}
+
+	node, err := s.DB.IpNode(addr)
 	if err != nil {
 		slog.Default().Error("ip node", "error", err)
 		return echo.ErrBadRequest
@@ -491,7 +493,7 @@ func (s *Server) NodeCountHandler(c echo.Context) error {
 	node := c.Get("node").(sqlc.Node)
 
 	switch node.Type {
-	case database.ENTRY:
+	case sqlc.NodeTypeENTRY:
 		count, err := s.DB.CountEntry(node)
 		if err != nil {
 			slog.Default().Error("entry row", "error", err)
@@ -499,7 +501,7 @@ func (s *Server) NodeCountHandler(c echo.Context) error {
 		}
 
 		return c.JSON(http.StatusOK, map[string]int64{"count": count})
-	case database.FOODSTALL:
+	case sqlc.NodeTypeFOODSTALL:
 		count, err := s.DB.CountFoodStall(node)
 		if err != nil {
 			slog.Default().Error("foodstall row", "error", err)
@@ -507,7 +509,7 @@ func (s *Server) NodeCountHandler(c echo.Context) error {
 		}
 
 		return c.JSON(http.StatusOK, map[string]int64{"count": count})
-	case database.EXHIBITION:
+	case sqlc.NodeTypeEXHIBITION:
 		count, err := s.DB.CountExhibition(node)
 		if err != nil {
 			slog.Default().Error("exhibition row", "error", err)

@@ -7,17 +7,19 @@ package sqlc
 
 import (
 	"context"
-	"database/sql"
+	"net/netip"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countEntryLogByNodeId = `-- name: CountEntryLogByNodeId :one
 SELECT COUNT(*)
 FROM entry_logs
-WHERE node_id = ?
+WHERE node_id = $1
 `
 
-func (q *Queries) CountEntryLogByNodeId(ctx context.Context, nodeID sql.NullInt64) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countEntryLogByNodeId, nodeID)
+func (q *Queries) CountEntryLogByNodeId(ctx context.Context, nodeID pgtype.Int8) (int64, error) {
+	row := q.db.QueryRow(ctx, countEntryLogByNodeId, nodeID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -26,11 +28,11 @@ func (q *Queries) CountEntryLogByNodeId(ctx context.Context, nodeID sql.NullInt6
 const countExhibitionLogByNodeId = `-- name: CountExhibitionLogByNodeId :one
 SELECT COUNT(*)
 FROM exhibition_logs
-WHERE node_id = ?
+WHERE node_id = $1
 `
 
-func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID sql.NullInt64) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countExhibitionLogByNodeId, nodeID)
+func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.Int8) (int64, error) {
+	row := q.db.QueryRow(ctx, countExhibitionLogByNodeId, nodeID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -39,12 +41,12 @@ func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID sql.Nul
 const countFoodStallLogByNodeId = `-- name: CountFoodStallLogByNodeId :one
 SELECT SUM(quantity)
 FROM food_stall_logs
-WHERE node_id = ?
+WHERE node_id = $1
 `
 
-func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID sql.NullInt64) (sql.NullFloat64, error) {
-	row := q.db.QueryRowContext(ctx, countFoodStallLogByNodeId, nodeID)
-	var sum sql.NullFloat64
+func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int8) (int64, error) {
+	row := q.db.QueryRow(ctx, countFoodStallLogByNodeId, nodeID)
+	var sum int64
 	err := row.Scan(&sum)
 	return sum, err
 }
@@ -58,19 +60,19 @@ INSERT INTO batteries (
         charging,
         updated_at
     )
-VALUES (?, ?, ?, ?, ?, date('now'))
+VALUES ($1, $2, $3, $4, $5, now())
 `
 
 type CreateBatteryParams struct {
-	NodeID          sql.NullInt64
-	Level           sql.NullInt64
-	ChargingTime    sql.NullInt64
-	DischargingTime sql.NullInt64
-	Charging        sql.NullBool
+	NodeID          pgtype.Int8
+	Level           pgtype.Int4
+	ChargingTime    pgtype.Int4
+	DischargingTime pgtype.Int4
+	Charging        pgtype.Bool
 }
 
 func (q *Queries) CreateBattery(ctx context.Context, arg CreateBatteryParams) error {
-	_, err := q.db.ExecContext(ctx, createBattery,
+	_, err := q.db.Exec(ctx, createBattery,
 		arg.NodeID,
 		arg.Level,
 		arg.ChargingTime,
@@ -82,49 +84,49 @@ func (q *Queries) CreateBattery(ctx context.Context, arg CreateBatteryParams) er
 
 const createEntryLog = `-- name: CreateEntryLog :exec
 INSERT INTO entry_logs (node_id, visitor_id, type)
-VALUES (?, ?, ?)
+VALUES ($1, $2, $3)
 `
 
 type CreateEntryLogParams struct {
-	NodeID    sql.NullInt64
-	VisitorID sql.NullInt64
-	Type      string
+	NodeID    pgtype.Int8
+	VisitorID pgtype.Int8
+	Type      EntryLogsType
 }
 
 func (q *Queries) CreateEntryLog(ctx context.Context, arg CreateEntryLogParams) error {
-	_, err := q.db.ExecContext(ctx, createEntryLog, arg.NodeID, arg.VisitorID, arg.Type)
+	_, err := q.db.Exec(ctx, createEntryLog, arg.NodeID, arg.VisitorID, arg.Type)
 	return err
 }
 
 const createExhibitionLog = `-- name: CreateExhibitionLog :exec
 INSERT INTO exhibition_logs (node_id, visitor_id)
-VALUES (?, ?)
+VALUES ($1, $2)
 `
 
 type CreateExhibitionLogParams struct {
-	NodeID    sql.NullInt64
-	VisitorID sql.NullInt64
+	NodeID    pgtype.Int8
+	VisitorID pgtype.Int8
 }
 
 func (q *Queries) CreateExhibitionLog(ctx context.Context, arg CreateExhibitionLogParams) error {
-	_, err := q.db.ExecContext(ctx, createExhibitionLog, arg.NodeID, arg.VisitorID)
+	_, err := q.db.Exec(ctx, createExhibitionLog, arg.NodeID, arg.VisitorID)
 	return err
 }
 
 const createFoodStallLog = `-- name: CreateFoodStallLog :exec
 INSERT INTO food_stall_logs (node_id, visitor_id, food_id, quantity)
-VALUES (?, ?, ?, ?)
+VALUES ($1, $2, $3, $4)
 `
 
 type CreateFoodStallLogParams struct {
-	NodeID    sql.NullInt64
-	VisitorID sql.NullInt64
-	FoodID    sql.NullInt64
-	Quantity  int64
+	NodeID    pgtype.Int8
+	VisitorID pgtype.Int8
+	FoodID    pgtype.Int8
+	Quantity  int32
 }
 
 func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLogParams) error {
-	_, err := q.db.ExecContext(ctx, createFoodStallLog,
+	_, err := q.db.Exec(ctx, createFoodStallLog,
 		arg.NodeID,
 		arg.VisitorID,
 		arg.FoodID,
@@ -135,17 +137,17 @@ func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLog
 
 const createVisitor = `-- name: CreateVisitor :one
 INSERT INTO visitors (ip, random)
-VALUES (?, ?)
+VALUES ($1, $2)
 RETURNING id, random, created_at, updated_at, ip
 `
 
 type CreateVisitorParams struct {
-	Ip     string
-	Random int64
+	Ip     netip.Addr
+	Random int32
 }
 
 func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (Visitor, error) {
-	row := q.db.QueryRowContext(ctx, createVisitor, arg.Ip, arg.Random)
+	row := q.db.QueryRow(ctx, createVisitor, arg.Ip, arg.Random)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
@@ -160,24 +162,24 @@ func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (V
 const deleteNodeIp = `-- name: DeleteNodeIp :exec
 UPDATE nodes
 SET ip = NULL
-WHERE ip = ?
+WHERE ip = $1
 `
 
-func (q *Queries) DeleteNodeIp(ctx context.Context, ip sql.NullString) error {
-	_, err := q.db.ExecContext(ctx, deleteNodeIp, ip)
+func (q *Queries) DeleteNodeIp(ctx context.Context, ip *netip.Addr) error {
+	_, err := q.db.Exec(ctx, deleteNodeIp, ip)
 	return err
 }
 
 const getEntryLogByNodeId = `-- name: GetEntryLogByNodeId :many
 SELECT id, node_id, visitor_id, type, created_at, updated_at
 FROM entry_logs
-WHERE node_id = ?
+WHERE node_id = $1
 ORDER BY id DESC
 LIMIT 10
 `
 
-func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID sql.NullInt64) ([]EntryLog, error) {
-	rows, err := q.db.QueryContext(ctx, getEntryLogByNodeId, nodeID)
+func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]EntryLog, error) {
+	rows, err := q.db.Query(ctx, getEntryLogByNodeId, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,9 +199,6 @@ func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID sql.NullInt64)
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -209,13 +208,13 @@ func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID sql.NullInt64)
 const getEntryLogByVisitorId = `-- name: GetEntryLogByVisitorId :one
 SELECT id, node_id, visitor_id, type, created_at, updated_at
 FROM entry_logs
-WHERE visitor_id = ?
+WHERE visitor_id = $1
 ORDER BY id DESC
 LIMIT 1
 `
 
-func (q *Queries) GetEntryLogByVisitorId(ctx context.Context, visitorID sql.NullInt64) (EntryLog, error) {
-	row := q.db.QueryRowContext(ctx, getEntryLogByVisitorId, visitorID)
+func (q *Queries) GetEntryLogByVisitorId(ctx context.Context, visitorID pgtype.Int8) (EntryLog, error) {
+	row := q.db.QueryRow(ctx, getEntryLogByVisitorId, visitorID)
 	var i EntryLog
 	err := row.Scan(
 		&i.ID,
@@ -231,13 +230,13 @@ func (q *Queries) GetEntryLogByVisitorId(ctx context.Context, visitorID sql.Null
 const getExhibitionLogByNodeId = `-- name: GetExhibitionLogByNodeId :many
 SELECT id, node_id, visitor_id, created_at, updated_at
 FROM exhibition_logs
-WHERE node_id = ?
+WHERE node_id = $1
 ORDER BY id DESC
 LIMIT 10
 `
 
-func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID sql.NullInt64) ([]ExhibitionLog, error) {
-	rows, err := q.db.QueryContext(ctx, getExhibitionLogByNodeId, nodeID)
+func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]ExhibitionLog, error) {
+	rows, err := q.db.Query(ctx, getExhibitionLogByNodeId, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -256,9 +255,6 @@ func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID sql.NullI
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -268,12 +264,12 @@ func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID sql.NullI
 const getFoodById = `-- name: GetFoodById :one
 SELECT id, node_id, name, price, created_at, updated_at
 FROM foods
-WHERE id = ?
+WHERE id = $1
 LIMIT 1
 `
 
 func (q *Queries) GetFoodById(ctx context.Context, id int64) (Food, error) {
-	row := q.db.QueryRowContext(ctx, getFoodById, id)
+	row := q.db.QueryRow(ctx, getFoodById, id)
 	var i Food
 	err := row.Scan(
 		&i.ID,
@@ -289,13 +285,13 @@ func (q *Queries) GetFoodById(ctx context.Context, id int64) (Food, error) {
 const getFoodStallLogByNodeId = `-- name: GetFoodStallLogByNodeId :many
 SELECT id, node_id, visitor_id, food_id, quantity, created_at, updated_at
 FROM food_stall_logs
-WHERE node_id = ?
+WHERE node_id = $1
 ORDER BY id DESC
 LIMIT 10
 `
 
-func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID sql.NullInt64) ([]FoodStallLog, error) {
-	rows, err := q.db.QueryContext(ctx, getFoodStallLogByNodeId, nodeID)
+func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]FoodStallLog, error) {
+	rows, err := q.db.Query(ctx, getFoodStallLogByNodeId, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -316,9 +312,6 @@ func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID sql.NullIn
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -328,11 +321,11 @@ func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID sql.NullIn
 const getFoodsByNodeId = `-- name: GetFoodsByNodeId :many
 SELECT id, node_id, name, price, created_at, updated_at
 FROM foods
-WHERE node_id = ?
+WHERE node_id = $1
 `
 
-func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID sql.NullInt64) ([]Food, error) {
-	rows, err := q.db.QueryContext(ctx, getFoodsByNodeId, nodeID)
+func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]Food, error) {
+	rows, err := q.db.Query(ctx, getFoodsByNodeId, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -352,9 +345,6 @@ func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID sql.NullInt64) ([
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -362,14 +352,14 @@ func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID sql.NullInt64) ([
 }
 
 const getNodeById = `-- name: GetNodeById :one
-SELECT id, "key", name, ip, type, created_at, updated_at
+SELECT id, key, name, ip, type, created_at, updated_at
 FROM nodes
-WHERE id = ?
+WHERE id = $1
 LIMIT 1
 `
 
 func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
-	row := q.db.QueryRowContext(ctx, getNodeById, id)
+	row := q.db.QueryRow(ctx, getNodeById, id)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -384,14 +374,14 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 }
 
 const getNodeByIp = `-- name: GetNodeByIp :one
-SELECT id, "key", name, ip, type, created_at, updated_at
+SELECT id, key, name, ip, type, created_at, updated_at
 FROM nodes
-WHERE ip = ?
+WHERE ip = $1
 LIMIT 1
 `
 
-func (q *Queries) GetNodeByIp(ctx context.Context, ip sql.NullString) (Node, error) {
-	row := q.db.QueryRowContext(ctx, getNodeByIp, ip)
+func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error) {
+	row := q.db.QueryRow(ctx, getNodeByIp, ip)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -406,14 +396,14 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip sql.NullString) (Node, err
 }
 
 const getNodeByKey = `-- name: GetNodeByKey :one
-SELECT id, "key", name, ip, type, created_at, updated_at
+SELECT id, key, name, ip, type, created_at, updated_at
 FROM nodes
-WHERE key = ?
+WHERE key = $1
 LIMIT 1
 `
 
-func (q *Queries) GetNodeByKey(ctx context.Context, key sql.NullString) (Node, error) {
-	row := q.db.QueryRowContext(ctx, getNodeByKey, key)
+func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, error) {
+	row := q.db.QueryRow(ctx, getNodeByKey, key)
 	var i Node
 	err := row.Scan(
 		&i.ID,
@@ -430,12 +420,12 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key sql.NullString) (Node, e
 const getVisitorById = `-- name: GetVisitorById :one
 SELECT id, random, created_at, updated_at, ip
 FROM visitors
-WHERE id = ?
+WHERE id = $1
 LIMIT 1
 `
 
 func (q *Queries) GetVisitorById(ctx context.Context, id int64) (Visitor, error) {
-	row := q.db.QueryRowContext(ctx, getVisitorById, id)
+	row := q.db.QueryRow(ctx, getVisitorById, id)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
@@ -450,18 +440,18 @@ func (q *Queries) GetVisitorById(ctx context.Context, id int64) (Visitor, error)
 const getVisitorByIdAndRandom = `-- name: GetVisitorByIdAndRandom :one
 SELECT id, random, created_at, updated_at, ip
 FROM visitors
-WHERE id = ?
-    AND random = ?
+WHERE id = $1
+    AND random = $2
 LIMIT 1
 `
 
 type GetVisitorByIdAndRandomParams struct {
 	ID     int64
-	Random int64
+	Random int32
 }
 
 func (q *Queries) GetVisitorByIdAndRandom(ctx context.Context, arg GetVisitorByIdAndRandomParams) (Visitor, error) {
-	row := q.db.QueryRowContext(ctx, getVisitorByIdAndRandom, arg.ID, arg.Random)
+	row := q.db.QueryRow(ctx, getVisitorByIdAndRandom, arg.ID, arg.Random)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
@@ -476,12 +466,12 @@ func (q *Queries) GetVisitorByIdAndRandom(ctx context.Context, arg GetVisitorByI
 const getVisitorByIp = `-- name: GetVisitorByIp :one
 SELECT id, random, created_at, updated_at, ip
 FROM visitors
-WHERE ip = ?
+WHERE ip = $1
 LIMIT 1
 `
 
-func (q *Queries) GetVisitorByIp(ctx context.Context, ip string) (Visitor, error) {
-	row := q.db.QueryRowContext(ctx, getVisitorByIp, ip)
+func (q *Queries) GetVisitorByIp(ctx context.Context, ip netip.Addr) (Visitor, error) {
+	row := q.db.QueryRow(ctx, getVisitorByIp, ip)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
@@ -495,25 +485,25 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip string) (Visitor, error
 
 const updateBattery = `-- name: UpdateBattery :exec
 UPDATE batteries
-SET level = coalesce(?1, level),
-    charging_time = coalesce(?2, charging_time),
-    discharging_time = coalesce(?3, discharging_time),
-    charging = coalesce(?4, charging),
-    updated_at = ?5
-WHERE node_id = ?6
+SET level = coalesce($1, level),
+    charging_time = coalesce($2, charging_time),
+    discharging_time = coalesce($3, discharging_time),
+    charging = coalesce($4, charging),
+    updated_at = $5
+WHERE node_id = $6
 `
 
 type UpdateBatteryParams struct {
-	Level           sql.NullInt64
-	ChargingTime    sql.NullInt64
-	DischargingTime sql.NullInt64
-	Charging        sql.NullBool
-	ID              sql.NullTime
-	NodeID          sql.NullInt64
+	Level           pgtype.Int4
+	ChargingTime    pgtype.Int4
+	DischargingTime pgtype.Int4
+	Charging        pgtype.Bool
+	ID              pgtype.Timestamp
+	NodeID          pgtype.Int8
 }
 
 func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) error {
-	_, err := q.db.ExecContext(ctx, updateBattery,
+	_, err := q.db.Exec(ctx, updateBattery,
 		arg.Level,
 		arg.ChargingTime,
 		arg.DischargingTime,
@@ -526,17 +516,17 @@ func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) er
 
 const updateFoodStallLog = `-- name: UpdateFoodStallLog :exec
 UPDATE food_stall_logs
-SET quantity = ?,
-    updated_at = date('now')
-WHERE id = ?
+SET quantity = $1,
+    updated_at = now()
+WHERE id = $2
 `
 
 type UpdateFoodStallLogParams struct {
-	Quantity int64
+	Quantity int32
 	ID       int64
 }
 
 func (q *Queries) UpdateFoodStallLog(ctx context.Context, arg UpdateFoodStallLogParams) error {
-	_, err := q.db.ExecContext(ctx, updateFoodStallLog, arg.Quantity, arg.ID)
+	_, err := q.db.Exec(ctx, updateFoodStallLog, arg.Quantity, arg.ID)
 	return err
 }
