@@ -38,6 +38,25 @@ func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.
 	return count, err
 }
 
+const countFood = `-- name: CountFood :one
+SELECT SUM(quantity)
+FROM food_stall_logs
+WHERE node_id = $1
+    AND food_id = $2
+`
+
+type CountFoodParams struct {
+	NodeID pgtype.Int8
+	FoodID pgtype.Int8
+}
+
+func (q *Queries) CountFood(ctx context.Context, arg CountFoodParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countFood, arg.NodeID, arg.FoodID)
+	var sum int64
+	err := row.Scan(&sum)
+	return sum, err
+}
+
 const countFoodStallLogByNodeId = `-- name: CountFoodStallLogByNodeId :one
 SELECT SUM(quantity)
 FROM food_stall_logs

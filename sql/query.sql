@@ -114,3 +114,8 @@ WHERE node_id = $1;
 SELECT COUNT(*)
 FROM exhibition_logs
 WHERE node_id = $1;
+-- name: CountFood :one
+SELECT SUM(quantity)
+FROM food_stall_logs
+WHERE node_id = $1
+    AND food_id = $2;

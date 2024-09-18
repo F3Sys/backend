@@ -55,6 +55,8 @@ type Service interface {
 	CountFoodStall(node sqlc.Node) (int64, error)
 
 	CountExhibition(node sqlc.Node) (int64, error)
+
+	CountFood(node sqlc.Node) ([]NodeFoodCount, error)
 }
 
 type DbService struct {
@@ -93,7 +95,9 @@ func (s *DbService) Password(key string) (sqlc.Node, bool, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return sqlc.Node{}, false, err
 	}
@@ -114,7 +118,9 @@ func (s *DbService) GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return "", err
 	}
@@ -137,7 +143,9 @@ func (s *DbService) CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) 
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return "", err
 	}
@@ -169,7 +177,9 @@ func (s *DbService) PushEntry(node sqlc.Node, visitorID int64, visitorRandom int
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return err
 	}
@@ -238,7 +248,9 @@ func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return err
 	}
@@ -292,7 +304,9 @@ func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRando
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return err
 	}
@@ -327,7 +341,9 @@ func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, quantity int32) err
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return err
 	}
@@ -357,7 +373,9 @@ func (s *DbService) StatusNode(nodeID int64, level int32, chargingTime int32, di
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return err
 	}
@@ -386,7 +404,9 @@ func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return false, err
 	}
@@ -434,7 +454,9 @@ func (s *DbService) EntryRow(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, 
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -468,7 +490,9 @@ func (s *DbService) FoodstallRow(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstall
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +531,9 @@ func (s *DbService) ExhibitionRow(node sqlc.Node, sqid *sqids.Sqids) ([]Exhibiti
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -541,7 +567,9 @@ func (s *DbService) IpNode(ip netip.Addr) (sqlc.Node, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return sqlc.Node{}, err
 	}
@@ -575,7 +603,9 @@ func (s *DbService) Foods(node sqlc.Node) ([]NodeFood, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -602,7 +632,9 @@ func (s *DbService) CountEntry(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -623,7 +655,9 @@ func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -644,7 +678,9 @@ func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer q.Rollback(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -659,4 +695,46 @@ func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 	}
 
 	return count, nil
+}
+
+type NodeFoodCount struct {
+	ID    int
+	Name  string
+	Count int
+}
+
+func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return []NodeFoodCount{}, err
+	}
+	queries := sqlc.New(q)
+
+	foods, err := queries.GetFoodsByNodeId(ctx, pgtype.Int8{
+		Int64: node.ID,
+		Valid: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var foodsList []NodeFoodCount
+
+	for _, food := range foods {
+		foodCountById, err := queries.CountFood(ctx, sqlc.CountFoodParams{
+			NodeID: pgtype.Int8{Int64: node.ID, Valid: true},
+			FoodID: pgtype.Int8{Int64: food.ID, Valid: true},
+		})
+		if err != nil {
+			return []NodeFoodCount{}, err
+		}
+		foodsList = append(foodsList, NodeFoodCount{int(food.ID), food.Name, int(foodCountById)})
+	}
+
+	return foodsList, nil
 }

@@ -3,6 +3,7 @@ package server
 import (
 	"backend/internal/database"
 	"backend/internal/sqlc"
+	"errors"
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
@@ -91,6 +92,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	protected.GET("/count", s.NodeCountHandler)
 
+	protected.GET("/food_count", s.NodeFoodCountHandler)
+
 	protected.GET("/visitor/:f3sid", s.NodeVisitorLookupHandler)
 
 	push := protected.Group("/push")
@@ -152,7 +155,7 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 
 	visitorF3SiD, err := s.DB.GetVisitor(addr, sqid)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			random := rand.Int32()
 
 			visitorF3SiD, err := s.DB.CreateVisitor(addr, random, sqid)
@@ -525,4 +528,21 @@ func (s *Server) NodeCountHandler(c echo.Context) error {
 	}
 
 	return echo.ErrBadRequest
+}
+
+func (s *Server) NodeFoodCountHandler(c echo.Context) error {
+	node := c.Get("node").(sqlc.Node)
+
+	foodCount, err := s.DB.CountFood(node)
+	if err != nil {
+		slog.Default().Error("foodstall row", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	result := make(map[string]int)
+	for _, food := range foodCount {
+		result[food.Name] = food.Count
+	}
+
+	return c.JSON(http.StatusOK, result)
 }
