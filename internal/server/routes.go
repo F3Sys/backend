@@ -93,13 +93,15 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	protected.GET("/visitor/:f3sid", s.NodeVisitorLookupHandler)
 
-	protected.POST("/push/entry", s.NodePushEntryHandler)
+	push := protected.Group("/push")
 
-	protected.POST("/push/foodstall", s.NodePushFoodStallHandler)
+	push.POST("/entry", s.NodePushEntryHandler)
 
-	protected.POST("/push/exhibition", s.NodePushExhibitionHandler)
+	push.POST("/foodstall", s.NodePushFoodStallHandler)
 
-	protected.PATCH("/push", s.NodeUpdatePushHandler)
+	push.POST("/exhibition", s.NodePushExhibitionHandler)
+
+	push.PATCH("/", s.NodeUpdatePushHandler)
 
 	protected.PATCH("/status", s.NodeStatusHandler)
 
