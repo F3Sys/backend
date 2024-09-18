@@ -539,10 +539,14 @@ func (s *Server) NodeFoodCountHandler(c echo.Context) error {
 		return echo.ErrBadRequest
 	}
 
-	result := make(map[string]int)
-	for _, food := range foodCount {
-		result[food.Name] = food.Count
+	foodsArray := make([]map[string]interface{}, len(foodCount))
+	for i, food := range foodCount {
+		foodsArray[i] = map[string]interface{}{
+			"id":    food.ID,
+			"name":  food.Name,
+			"count": food.Count,
+		}
 	}
 
-	return c.JSON(http.StatusOK, result)
+	return c.JSON(http.StatusOK, foodsArray)
 }
