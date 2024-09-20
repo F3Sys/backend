@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for f3s on 2024-09-14T13:54:21+09:00
+# fly.toml app configuration file generated for f3s-api on 2024-09-20T16:34:56+09:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'f3s'
+app = 'f3s-api'
 primary_region = 'nrt'
 
 [build]
@@ -22,6 +22,4 @@ primary_region = 'nrt'
   processes = ['app']
 
 [[vm]]
-  memory = '512mb'
-  cpu_kind = 'shared'
-  cpus = 2
+  size = 'shared-cpu-2x'
