@@ -1,17 +1,12 @@
 ARG GO_VERSION=1
 FROM golang:${GO_VERSION}-alpine as builder
 
-WORKDIR /usr/src/backend
-COPY /backend/go.mod /backend/go.sum ./
+WORKDIR /usr/src/app
+COPY go.mod go.sum ./
 RUN go mod download && go mod verify
-COPY /backend/ .
-RUN go build -v -o /backend cmd/api/main.go
+COPY . .
+RUN go build -v -o /app cmd/api/main.go
 
-RUN backend
+FROM alpine:3
 
-FROM caddy:2-alpine
-
-COPY Caddyfile /etc/caddy/Caddyfile
-
-RUN caddy run
-# COPY --from=builder /backend /usr/share/caddy/
+COPY --from=builder /app /usr/local/bin/
