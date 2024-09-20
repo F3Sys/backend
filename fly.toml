@@ -6,12 +6,8 @@
 app = 'f3s-api'
 primary_region = 'nrt'
 
-[build]
-  [build.args]
-    GO_VERSION = '1.23'
-
 [env]
-  PORT = '8080'
+  PORT = '8081'
 
 [http_service]
   internal_port = 8080

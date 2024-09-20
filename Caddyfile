@@ -1,0 +1,7 @@
+{
+	auto_https off
+}
+
+api.aicj.io {
+	reverse_proxy :8081
+}

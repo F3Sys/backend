@@ -13,7 +13,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sqids/sqids-go"
-	"golang.org/x/time/rate"
 )
 
 func Sqids() (*sqids.Sqids, error) {
@@ -36,8 +35,6 @@ type (
 )
 
 func (s *Server) RegisterRoutes() http.Handler {
-	hosts := map[string]*Host{}
-
 	api := echo.New()
 	api.IPExtractor = func(r *http.Request) string {
 		return r.Header.Get("Fly-Client-IP")
@@ -64,15 +61,16 @@ func (s *Server) RegisterRoutes() http.Handler {
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
-	api.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
+	// api.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
+	// limiterStore := middleware.NewRateLimiterMemoryStore(rate.Limit(10))
 
 	api.GET("/ip", s.PingHandler)
 
-	api.GET("/visitor", s.VisitorHandler)
+	api.GET("/visitor", s.VisitorHandler) // middleware.RateLimiter(limiterStore)
 
 	api.POST("/node", s.NodeIpHandler)
 
-	api.POST("/vote", s.VoteHandler)
+	api.POST("/vote", s.VoteHandler) // middleware.RateLimiter(limiterStore)
 
 	protected := api.Group("/protected", middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
 		node, ok, err := s.DB.Password(key)
@@ -109,24 +107,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	protected.PATCH("/status", s.NodeStatusHandler)
 
-	hosts["api.aicj.io"] = &Host{api}
-
-	e := echo.New()
-	e.Any("/*", func(c echo.Context) (err error) {
-		req := c.Request()
-		res := c.Response()
-		host := hosts[req.Host]
-
-		if host == nil {
-			err = echo.ErrNotFound
-		} else {
-			host.Echo.ServeHTTP(res, req)
-		}
-
-		return
-	})
-
-	return e
+	return api
 }
 
 func (s *Server) PingHandler(c echo.Context) error {
