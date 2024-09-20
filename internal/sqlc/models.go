@@ -144,6 +144,13 @@ type FoodStallLog struct {
 	UpdatedAt pgtype.Timestamp
 }
 
+type Model struct {
+	ID        int64
+	Name      string
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
 type Node struct {
 	ID        int64
 	Key       pgtype.Text
@@ -166,8 +173,9 @@ type Student struct {
 
 type Visitor struct {
 	ID        int64
+	ModelID   pgtype.Int8
+	Ip        netip.Addr
 	Random    int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
-	Ip        netip.Addr
 }

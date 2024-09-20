@@ -157,7 +157,7 @@ func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLog
 const createVisitor = `-- name: CreateVisitor :one
 INSERT INTO visitors (ip, random)
 VALUES ($1, $2)
-RETURNING id, random, created_at, updated_at, ip
+RETURNING id, model_id, ip, random, created_at, updated_at
 `
 
 type CreateVisitorParams struct {
@@ -170,10 +170,11 @@ func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (V
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
+		&i.ModelID,
+		&i.Ip,
 		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Ip,
 	)
 	return i, err
 }
@@ -437,7 +438,7 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 }
 
 const getVisitorById = `-- name: GetVisitorById :one
-SELECT id, random, created_at, updated_at, ip
+SELECT id, model_id, ip, random, created_at, updated_at
 FROM visitors
 WHERE id = $1
 LIMIT 1
@@ -448,16 +449,17 @@ func (q *Queries) GetVisitorById(ctx context.Context, id int64) (Visitor, error)
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
+		&i.ModelID,
+		&i.Ip,
 		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Ip,
 	)
 	return i, err
 }
 
 const getVisitorByIdAndRandom = `-- name: GetVisitorByIdAndRandom :one
-SELECT id, random, created_at, updated_at, ip
+SELECT id, model_id, ip, random, created_at, updated_at
 FROM visitors
 WHERE id = $1
     AND random = $2
@@ -474,16 +476,17 @@ func (q *Queries) GetVisitorByIdAndRandom(ctx context.Context, arg GetVisitorByI
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
+		&i.ModelID,
+		&i.Ip,
 		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Ip,
 	)
 	return i, err
 }
 
 const getVisitorByIp = `-- name: GetVisitorByIp :one
-SELECT id, random, created_at, updated_at, ip
+SELECT id, model_id, ip, random, created_at, updated_at
 FROM visitors
 WHERE ip = $1
 LIMIT 1
@@ -494,10 +497,11 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip netip.Addr) (Visitor, e
 	var i Visitor
 	err := row.Scan(
 		&i.ID,
+		&i.ModelID,
+		&i.Ip,
 		&i.Random,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Ip,
 	)
 	return i, err
 }
@@ -547,5 +551,24 @@ type UpdateFoodStallLogParams struct {
 
 func (q *Queries) UpdateFoodStallLog(ctx context.Context, arg UpdateFoodStallLogParams) error {
 	_, err := q.db.Exec(ctx, updateFoodStallLog, arg.Quantity, arg.ID)
+	return err
+}
+
+const updateVisitorModel = `-- name: UpdateVisitorModel :exec
+UPDATE visitors
+SET model_id = $1,
+    updated_at = now()
+WHERE id = $2
+    AND random = $3
+`
+
+type UpdateVisitorModelParams struct {
+	ModelID pgtype.Int8
+	ID      int64
+	Random  int32
+}
+
+func (q *Queries) UpdateVisitorModel(ctx context.Context, arg UpdateVisitorModelParams) error {
+	_, err := q.db.Exec(ctx, updateVisitorModel, arg.ModelID, arg.ID, arg.Random)
 	return err
 }

@@ -24,6 +24,8 @@ import (
 type Service interface {
 	Password(key string) (sqlc.Node, bool, error)
 
+	Vote(modelID int64, visitorID int64, visitorRandom int32) error
+
 	GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 
 	CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) (string, error)
@@ -112,6 +114,35 @@ func (s *DbService) Password(key string) (sqlc.Node, bool, error) {
 	}
 
 	return nodeByKey, true, nil
+}
+
+func (s *DbService) Vote(modelID int64, visitorID int64, visitorRandom int32) error {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return err
+	}
+	queries := sqlc.New(q)
+
+	err = queries.UpdateVisitorModel(ctx, sqlc.UpdateVisitorModelParams{
+		ModelID: pgtype.Int8{Int64: modelID, Valid: true},
+		ID:      visitorID,
+		Random:  visitorRandom,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *DbService) GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {

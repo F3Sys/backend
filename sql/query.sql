@@ -18,6 +18,12 @@ LIMIT 1;
 INSERT INTO visitors (ip, random)
 VALUES ($1, $2)
 RETURNING *;
+-- name: UpdateVisitorModel :exec
+UPDATE visitors
+SET model_id = $1,
+    updated_at = now()
+WHERE id = $2
+    AND random = $3;
 -- name: CreateBattery :exec
 INSERT INTO batteries (
         node_id,

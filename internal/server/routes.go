@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sqids/sqids-go"
+	"golang.org/x/time/rate"
 )
 
 func Sqids() (*sqids.Sqids, error) {
@@ -34,16 +35,13 @@ type (
 	}
 )
 
-func RealIP(c echo.Context) string {
-	ip := c.Request().Header.Get("Fly-Client-IP")
-
-	return ip
-}
-
 func (s *Server) RegisterRoutes() http.Handler {
 	hosts := map[string]*Host{}
 
 	api := echo.New()
+	api.IPExtractor = func(r *http.Request) string {
+		return r.Header.Get("Fly-Client-IP")
+	}
 	api.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:      true,
 		LogMethod:   true,
@@ -66,12 +64,15 @@ func (s *Server) RegisterRoutes() http.Handler {
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
+	api.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
 
 	api.GET("/ip", s.PingHandler)
 
 	api.GET("/visitor", s.VisitorHandler)
 
 	api.POST("/node", s.NodeIpHandler)
+
+	api.POST("/vote", s.VoteHandler)
 
 	protected := api.Group("/protected", middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
 		node, ok, err := s.DB.Password(key)
@@ -129,7 +130,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 }
 
 func (s *Server) PingHandler(c echo.Context) error {
-	ip := RealIP(c)
+	ip := c.RealIP()
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
 		slog.Default().Error("ParseAddr", "error", err)
@@ -139,7 +140,7 @@ func (s *Server) PingHandler(c echo.Context) error {
 }
 
 func (s *Server) VisitorHandler(c echo.Context) error {
-	ip := RealIP(c)
+	ip := c.RealIP()
 
 	sqid, err := Sqids()
 	if err != nil {
@@ -175,6 +176,41 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"f3sid": visitorF3SiD,
 	})
+}
+
+type Vote struct {
+	ModelID      int    `json:"model_id"`
+	VisitorF3SiD string `json:"f3sid"`
+}
+
+func (s *Server) VoteHandler(c echo.Context) error {
+	var vote Vote
+
+	err := c.Bind(&vote)
+	if err != nil {
+		slog.Default().Error("bind", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	sqid, err := Sqids()
+	if err != nil {
+		slog.Default().Error("sqids initialization", "error", err)
+		return echo.ErrInternalServerError
+	}
+
+	voteVisitorID := sqid.Decode(vote.VisitorF3SiD)
+	if len(voteVisitorID) != 2 {
+		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		return echo.ErrBadRequest
+	}
+
+	err = s.DB.Vote(int64(vote.ModelID), int64(voteVisitorID[0]), int32(voteVisitorID[1]))
+	if err != nil {
+		slog.Default().Error("vote", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	return c.NoContent(http.StatusOK)
 }
 
 type PushEntry struct {
@@ -478,7 +514,7 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 }
 
 func (s *Server) NodeIpHandler(c echo.Context) error {
-	ip := RealIP(c)
+	ip := c.RealIP()
 
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {

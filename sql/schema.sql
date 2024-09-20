@@ -17,7 +17,7 @@ CREATE TABLE foods (
     price INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE CASCADE
+    FOREIGN KEY (node_id) REFERENCES nodes(id)
 );
 -- Battery table
 CREATE TABLE batteries (
@@ -29,15 +29,17 @@ CREATE TABLE batteries (
     charging BOOLEAN,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE CASCADE
+    FOREIGN KEY (node_id) REFERENCES nodes(id)
 );
 -- Visitor table
 CREATE TABLE visitors (
     id BIGSERIAL PRIMARY KEY,
+    model_id BIGINT,
+    ip INET UNIQUE NOT NULL,
     random INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ip INET UNIQUE NOT NULL
+    FOREIGN KEY (model_id) REFERENCES models(id)
 );
 -- Student table
 CREATE TABLE students (
@@ -48,8 +50,15 @@ CREATE TABLE students (
     student_id INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE RESTRICT ON
-        UPDATE CASCADE
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id)
+);
+-- Talent table
+CREATE TABLE models (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id)
 );
 CREATE TYPE entry_logs_type AS ENUM ('ENTERED', 'LEFT');
 -- EntryLog table
@@ -60,9 +69,8 @@ CREATE TABLE entry_logs (
     TYPE entry_logs_type NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE RESTRICT ON
-        UPDATE CASCADE
+    FOREIGN KEY (node_id) REFERENCES nodes(id),
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id)
 );
 -- FoodStallLog table
 CREATE TABLE food_stall_logs (
@@ -73,10 +81,9 @@ CREATE TABLE food_stall_logs (
     quantity INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE RESTRICT ON
-        UPDATE CASCADE,
-    FOREIGN KEY (food_id) REFERENCES foods(id) ON DELETE RESTRICT ON UPDATE CASCADE
+    FOREIGN KEY (node_id) REFERENCES nodes(id),
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id),
+    FOREIGN KEY (food_id) REFERENCES foods(id)
 );
 -- ExhibitionLog table
 CREATE TABLE exhibition_logs (
@@ -85,9 +92,8 @@ CREATE TABLE exhibition_logs (
     visitor_id BIGINT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE RESTRICT ON
-        UPDATE CASCADE
+    FOREIGN KEY (node_id) REFERENCES nodes(id),
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id)
 );
 -- Create indexes
 CREATE INDEX idx_nodes_key ON nodes (key);

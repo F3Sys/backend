@@ -8,6 +8,7 @@ require (
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/sqids/sqids-go v0.4.1
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
+	golang.org/x/time v0.6.0
 )
 
 require (
@@ -29,5 +30,4 @@ require (
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
-	golang.org/x/time v0.6.0 // indirect
 )
