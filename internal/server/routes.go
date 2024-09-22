@@ -59,7 +59,7 @@ func (s *Server) ApiRoutes() *echo.Echo {
 	}))
 	api.Use(middleware.Recover())
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		// AllowOrigins: []string{"https://aicj.io"},
+		AllowOrigins: []string{"http://localhost:4000", "https://aicj.io"},
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
 
