@@ -47,18 +47,16 @@ CREATE TABLE students (
     visitor_id BIGINT UNIQUE,
     grade INTEGER NOT NULL,
     class INTEGER NOT NULL,
-    student_id INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (visitor_id) REFERENCES visitors(id)
 );
--- Talent table
+-- Model table
 CREATE TABLE models (
     id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TYPE entry_logs_type AS ENUM ('ENTERED', 'LEFT');
 -- EntryLog table

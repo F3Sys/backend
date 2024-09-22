@@ -2,7 +2,8 @@ package main
 
 import (
 	"backend/internal/server"
-	"fmt"
+	"log/slog"
+	"os"
 )
 
 func main() {
@@ -10,6 +11,7 @@ func main() {
 
 	err := newServer.ListenAndServe()
 	if err != nil {
-		panic(fmt.Sprintf("cannot start newServer: %s", err))
+		slog.Default().Error("cannot start newServer", "erro", err)
+		os.Exit(1)
 	}
 }

@@ -1,17 +1,18 @@
-# fly.toml app configuration file generated for f3s-api on 2024-09-20T16:34:56+09:00
+# fly.toml app configuration file generated for f3s-web on 2024-09-22T19:38:19+09:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'f3s-api'
+app = 'f3s-web'
 primary_region = 'nrt'
 
+[build]
+
 [env]
-  PORT = '8081'
+  PORT = '8080'
 
 [http_service]
-  internal_port = 0
-  force_https = true
+  internal_port = 8080
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0

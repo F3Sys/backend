@@ -34,7 +34,7 @@ type (
 	}
 )
 
-func (s *Server) RegisterRoutes() http.Handler {
+func (s *Server) ApiRoutes() *echo.Echo {
 	api := echo.New()
 	api.IPExtractor = func(r *http.Request) string {
 		return r.Header.Get("Fly-Client-IP")
@@ -59,8 +59,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 	}))
 	api.Use(middleware.Recover())
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"https://aicj.io"},
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
+
 	// api.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
 	// limiterStore := middleware.NewRateLimiterMemoryStore(rate.Limit(10))
 
@@ -108,6 +110,64 @@ func (s *Server) RegisterRoutes() http.Handler {
 	protected.PATCH("/status", s.NodeStatusHandler)
 
 	return api
+}
+
+func (s *Server) RegisterRoutes() *echo.Echo { // Hosts
+	hosts := map[string]*Host{}
+
+	//-----
+	// API
+	//-----
+
+	api := s.ApiRoutes()
+
+	hosts["api.aicj.io"] = &Host{api}
+
+	//------
+	// Public Website
+	//------
+
+	public := echo.New()
+	public.Use(middleware.Logger())
+	public.Use(middleware.Recover())
+
+	hosts["aicj.io"] = &Host{public}
+
+	public.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, c.Request().Header.Get("Fly-Client-IP"))
+	})
+
+	//---------
+	// Node Website
+	//---------
+
+	node := echo.New()
+	node.Use(middleware.Logger())
+	node.Use(middleware.Recover())
+
+	hosts["node.aicj.io"] = &Host{node}
+
+	node.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "node")
+	})
+
+	// Server
+	e := echo.New()
+	e.Any("/*", func(c echo.Context) (err error) {
+		req := c.Request()
+		res := c.Response()
+		host := hosts[req.Host]
+
+		if host == nil {
+			err = echo.ErrNotFound
+		} else {
+			host.Echo.ServeHTTP(res, req)
+		}
+
+		return
+	})
+
+	return e
 }
 
 func (s *Server) PingHandler(c echo.Context) error {

@@ -10,3 +10,5 @@ RUN go build -v -o /app cmd/api/main.go
 FROM alpine:3
 
 COPY --from=builder /app /usr/local/bin/
+
+CMD [ "app" ]
