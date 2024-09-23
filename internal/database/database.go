@@ -17,7 +17,6 @@ import (
 	"github.com/sqids/sqids-go"
 
 	_ "github.com/joho/godotenv/autoload"
-	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
 // Service represents a DbService that interacts with a database.

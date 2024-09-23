@@ -59,9 +59,10 @@ func (s *Server) ApiRoutes() *echo.Echo {
 	}))
 	api.Use(middleware.Recover())
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:4000", "https://aicj.io"},
+		// 	// AllowOrigins: []string{"http://localhost:4000", "https://aicj.io"},
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
+	// api.Use(middleware.CORS())
 
 	// api.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
 	// limiterStore := middleware.NewRateLimiterMemoryStore(rate.Limit(10))
@@ -198,7 +199,7 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 	visitorF3SiD, err := s.DB.GetVisitor(addr, sqid)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			random := rand.Int32()
+			random := rand.Int32N(9999)
 
 			visitorF3SiD, err := s.DB.CreateVisitor(addr, random, sqid)
 			if err != nil {
