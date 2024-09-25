@@ -372,7 +372,7 @@ func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]F
 }
 
 const getNodeById = `-- name: GetNodeById :one
-SELECT id, key, name, ip, type, created_at, updated_at
+SELECT id, key, name, ip, type, is_review, created_at, updated_at
 FROM nodes
 WHERE id = $1
 LIMIT 1
@@ -387,6 +387,7 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 		&i.Name,
 		&i.Ip,
 		&i.Type,
+		&i.IsReview,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -394,7 +395,7 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 }
 
 const getNodeByIp = `-- name: GetNodeByIp :one
-SELECT id, key, name, ip, type, created_at, updated_at
+SELECT id, key, name, ip, type, is_review, created_at, updated_at
 FROM nodes
 WHERE ip = $1
 LIMIT 1
@@ -409,6 +410,7 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 		&i.Name,
 		&i.Ip,
 		&i.Type,
+		&i.IsReview,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -416,7 +418,7 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 }
 
 const getNodeByKey = `-- name: GetNodeByKey :one
-SELECT id, key, name, ip, type, created_at, updated_at
+SELECT id, key, name, ip, type, is_review, created_at, updated_at
 FROM nodes
 WHERE key = $1
 LIMIT 1
@@ -431,6 +433,7 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 		&i.Name,
 		&i.Ip,
 		&i.Type,
+		&i.IsReview,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -539,20 +542,20 @@ func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) er
 
 const updateFoodStallLog = `-- name: UpdateFoodStallLog :exec
 UPDATE food_stall_logs
-SET quantity = $1,
-    food_id = $2,
+SET quantity = $2,
+    food_id = $3,
     updated_at = now()
-WHERE id = $3
+WHERE id = $1
 `
 
 type UpdateFoodStallLogParams struct {
+	ID       int64
 	Quantity int32
 	FoodID   pgtype.Int8
-	ID       int64
 }
 
 func (q *Queries) UpdateFoodStallLog(ctx context.Context, arg UpdateFoodStallLogParams) error {
-	_, err := q.db.Exec(ctx, updateFoodStallLog, arg.Quantity, arg.FoodID, arg.ID)
+	_, err := q.db.Exec(ctx, updateFoodStallLog, arg.ID, arg.Quantity, arg.FoodID)
 	return err
 }
 

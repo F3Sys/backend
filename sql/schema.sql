@@ -6,6 +6,7 @@ CREATE TABLE nodes (
     name TEXT NOT NULL,
     ip INET UNIQUE,
     type node_type NOT NULL,
+    is_review BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -88,6 +89,17 @@ CREATE TABLE exhibition_logs (
     id BIGSERIAL PRIMARY KEY,
     node_id BIGINT,
     visitor_id BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (node_id) REFERENCES nodes(id),
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id)
+);
+-- ExhibitionReviewLog table
+CREATE TABLE exhibition_review_logs (
+    id BIGSERIAL PRIMARY KEY,
+    node_id BIGINT,
+    visitor_id BIGINT,
+    rating INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (node_id) REFERENCES nodes(id),

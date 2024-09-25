@@ -105,10 +105,10 @@ ORDER BY id DESC
 LIMIT 10;
 -- name: UpdateFoodStallLog :exec
 UPDATE food_stall_logs
-SET quantity = $1,
-    food_id = $2,
+SET quantity = $2,
+    food_id = $3,
     updated_at = now()
-WHERE id = $3;
+WHERE id = $1;
 -- name: CountEntryLogByNodeId :one
 SELECT COUNT(*)
 FROM entry_logs

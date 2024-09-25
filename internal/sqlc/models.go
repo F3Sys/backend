@@ -125,6 +125,15 @@ type ExhibitionLog struct {
 	UpdatedAt pgtype.Timestamp
 }
 
+type ExhibitionReviewLog struct {
+	ID        int64
+	NodeID    pgtype.Int8
+	VisitorID pgtype.Int8
+	Rating    int32
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
 type Food struct {
 	ID        int64
 	NodeID    pgtype.Int8
@@ -157,6 +166,7 @@ type Node struct {
 	Name      string
 	Ip        *netip.Addr
 	Type      NodeType
+	IsReview  pgtype.Bool
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }
