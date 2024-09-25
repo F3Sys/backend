@@ -166,7 +166,6 @@ type Student struct {
 	VisitorID pgtype.Int8
 	Grade     int32
 	Class     int32
-	StudentID int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }

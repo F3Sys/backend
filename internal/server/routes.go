@@ -28,6 +28,20 @@ func Sqids() (*sqids.Sqids, error) {
 	return sqid, nil
 }
 
+func TypeMiddleware(nodeTypes ...sqlc.NodeType) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			node := c.Get("node").(sqlc.Node)
+			for _, nodeType := range nodeTypes {
+				if node.Type == nodeType {
+					return next(c)
+				}
+			}
+			return echo.ErrBadRequest
+		}
+	}
+}
+
 type (
 	Host struct {
 		Echo *echo.Echo
@@ -88,27 +102,27 @@ func (s *Server) ApiRoutes() *echo.Echo {
 
 	protected.GET("/info", s.NodeInfoHandler)
 
-	protected.GET("/foods", s.NodeFoodsHandler)
+	protected.GET("/foods", s.NodeFoodsHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
 
-	protected.GET("/table", s.NodeTableHandler)
+	protected.GET("/table", s.NodeTableHandler, TypeMiddleware(sqlc.NodeTypeENTRY, sqlc.NodeTypeFOODSTALL, sqlc.NodeTypeEXHIBITION))
 
-	protected.GET("/count", s.NodeCountHandler)
+	protected.GET("/count", s.NodeCountHandler, TypeMiddleware(sqlc.NodeTypeENTRY, sqlc.NodeTypeFOODSTALL, sqlc.NodeTypeEXHIBITION))
 
-	protected.GET("/food_count", s.NodeFoodCountHandler)
+	protected.GET("/food_count", s.NodeFoodCountHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
 
-	protected.GET("/visitor/:f3sid", s.NodeVisitorLookupHandler)
+	protected.GET("/visitor/:f3sid", s.NodeVisitorLookupHandler, TypeMiddleware(sqlc.NodeTypeENTRY, sqlc.NodeTypeFOODSTALL, sqlc.NodeTypeEXHIBITION))
 
 	push := protected.Group("/push")
 
-	push.POST("/entry", s.NodePushEntryHandler)
+	push.POST("/entry", s.NodePushEntryHandler, TypeMiddleware(sqlc.NodeTypeENTRY))
 
-	push.POST("/foodstall", s.NodePushFoodStallHandler)
+	push.POST("/foodstall", s.NodePushFoodStallHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
 
-	push.POST("/exhibition", s.NodePushExhibitionHandler)
+	push.POST("/exhibition", s.NodePushExhibitionHandler, TypeMiddleware(sqlc.NodeTypeEXHIBITION))
 
-	push.PATCH("/", s.NodeUpdatePushHandler)
+	push.PATCH("/foodstall", s.NodeUpdateFoodStallHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
 
-	protected.PATCH("/status", s.NodeStatusHandler)
+	protected.PATCH("/status", s.NodeStatusHandler, TypeMiddleware(sqlc.NodeTypeENTRY, sqlc.NodeTypeFOODSTALL, sqlc.NodeTypeEXHIBITION))
 
 	return api
 }
@@ -531,11 +545,12 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 }
 
 type UpdatePush struct {
-	Id       int `json:"id"`
+	ID       int `json:"id"`
+	FoodID   int `json:"food_id"`
 	Quantity int `json:"quantity"`
 }
 
-func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
+func (s *Server) NodeUpdateFoodStallHandler(c echo.Context) error {
 	var push UpdatePush
 
 	err := c.Bind(&push)
@@ -546,7 +561,7 @@ func (s *Server) NodeUpdatePushHandler(c echo.Context) error {
 
 	node := c.Get("node").(sqlc.Node)
 
-	err = s.DB.UpdatePushNode(node, int64(push.Id), int32(push.Quantity))
+	err = s.DB.UpdatePushNode(node, int64(push.ID), int64(push.FoodID), int32(push.Quantity))
 	if err != nil {
 		slog.Default().Error("update push", "error", err)
 		return echo.ErrBadRequest

@@ -106,8 +106,9 @@ LIMIT 10;
 -- name: UpdateFoodStallLog :exec
 UPDATE food_stall_logs
 SET quantity = $1,
+    food_id = $2,
     updated_at = now()
-WHERE id = $2;
+WHERE id = $3;
 -- name: CountEntryLogByNodeId :one
 SELECT COUNT(*)
 FROM entry_logs

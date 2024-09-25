@@ -37,7 +37,7 @@ type Service interface {
 
 	PushExhibition(node sqlc.Node, visitorID int64, visitorRandom int32) error
 
-	UpdatePushNode(node sqlc.Node, id int64, quantity int32) error
+	UpdatePushNode(node sqlc.Node, id int64, foodID int64, quantity int32) error
 
 	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
 
@@ -367,7 +367,7 @@ func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRando
 	return nil
 }
 
-func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, quantity int32) error {
+func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, foodID int64, quantity int32) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -382,6 +382,7 @@ func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, quantity int32) err
 	if node.Type == sqlc.NodeTypeFOODSTALL {
 		err = queries.UpdateFoodStallLog(ctx, sqlc.UpdateFoodStallLogParams{
 			Quantity: quantity,
+			FoodID:   pgtype.Int8{Int64: foodID, Valid: true},
 			ID:       id,
 		})
 		if err != nil {
