@@ -469,7 +469,8 @@ type EntryRowLog struct {
 type FoodstallRowLog struct {
 	Id        int64     `json:"id"`
 	F3SiD     string    `json:"f3sid"`
-	FoodName  string    `json:"name"`
+	FoodID    int64     `json:"food_id"`
+	FoodName  string    `json:"food_name"`
 	Quantity  int32     `json:"quantity"`
 	Price     int32     `json:"price"`
 	CreatedAt time.Time `json:"created_at"`
@@ -552,7 +553,7 @@ func (s *DbService) FoodstallRow(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstall
 			return nil, err
 		}
 
-		rowLog = append(rowLog, FoodstallRowLog{row.ID, visitorF3SiD, foodByID.Name, row.Quantity, foodByID.Price, row.CreatedAt.Time})
+		rowLog = append(rowLog, FoodstallRowLog{row.ID, visitorF3SiD, foodByID.ID, foodByID.Name, row.Quantity, foodByID.Price, row.CreatedAt.Time})
 	}
 
 	return rowLog, nil
