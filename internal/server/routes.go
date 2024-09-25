@@ -37,6 +37,7 @@ func TypeMiddleware(nodeTypes ...sqlc.NodeType) echo.MiddlewareFunc {
 					return next(c)
 				}
 			}
+			slog.Default().Error("node type middleware", "error", "invalid node type")
 			return echo.ErrBadRequest
 		}
 	}
@@ -296,11 +297,6 @@ func (s *Server) NodePushEntryHandler(c echo.Context) error {
 
 	node := c.Get("node").(sqlc.Node)
 
-	if node.Type != sqlc.NodeTypeENTRY {
-		slog.Default().Error("node type", "error", "invalid node type")
-		return echo.ErrBadRequest
-	}
-
 	err = s.DB.PushEntry(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
 	if err != nil {
 		slog.Default().Error("push entry", "error", err)
@@ -342,11 +338,6 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 	}
 
 	node := c.Get("node").(sqlc.Node)
-
-	if node.Type != sqlc.NodeTypeFOODSTALL {
-		slog.Default().Error("node type", "error", "invalid node type")
-		return echo.ErrBadRequest
-	}
 
 	if len(push.Foods) == 0 {
 		slog.Default().Error("foods", "error", "no foods")
@@ -397,11 +388,6 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 	}
 
 	node := c.Get("node").(sqlc.Node)
-
-	if node.Type != sqlc.NodeTypeEXHIBITION {
-		slog.Default().Error("node type", "error", "invalid node type")
-		return echo.ErrBadRequest
-	}
 
 	err = s.DB.PushExhibition(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
 	if err != nil {

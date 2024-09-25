@@ -381,9 +381,9 @@ func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, foodID int64, quant
 
 	if node.Type == sqlc.NodeTypeFOODSTALL {
 		err = queries.UpdateFoodStallLog(ctx, sqlc.UpdateFoodStallLogParams{
-			Quantity: quantity,
-			FoodID:   pgtype.Int8{Int64: foodID, Valid: true},
 			ID:       id,
+			FoodID:   pgtype.Int8{Int64: foodID, Valid: true},
+			Quantity: quantity,
 		})
 		if err != nil {
 			return err
