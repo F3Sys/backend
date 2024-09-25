@@ -111,6 +111,8 @@ func (s *Server) ApiRoutes() *echo.Echo {
 
 	protected.GET("/food_count", s.NodeFoodCountHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
 
+	protected.GET("/entry_count", s.NodeEntryTypeCountHandler, TypeMiddleware(sqlc.NodeTypeENTRY))
+
 	protected.GET("/visitor/:f3sid", s.NodeVisitorLookupHandler, TypeMiddleware(sqlc.NodeTypeENTRY, sqlc.NodeTypeFOODSTALL, sqlc.NodeTypeEXHIBITION))
 
 	push := protected.Group("/push")
@@ -235,13 +237,13 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 	})
 }
 
-type Vote struct {
+type vote struct {
 	ModelID      int    `json:"model_id"`
 	VisitorF3SiD string `json:"f3sid"`
 }
 
 func (s *Server) VoteHandler(c echo.Context) error {
-	var vote Vote
+	var vote vote
 
 	err := c.Bind(&vote)
 	if err != nil {
@@ -270,12 +272,12 @@ func (s *Server) VoteHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-type PushEntry struct {
+type pushEntry struct {
 	VisitorF3SiD string `json:"f3sid"`
 }
 
 func (s *Server) NodePushEntryHandler(c echo.Context) error {
-	var push PushEntry
+	var push pushEntry
 
 	err := c.Bind(&push)
 	if err != nil {
@@ -306,18 +308,18 @@ func (s *Server) NodePushEntryHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-type PushFoodStall struct {
+type pushFoodStall struct {
 	VisitorF3SiD string  `json:"f3sid"`
-	Foods        []Foods `json:"foods"`
+	Foods        []foods `json:"foods"`
 }
 
-type Foods struct {
+type foods struct {
 	ID       int `json:"id"`
 	Quantity int `json:"quantity"`
 }
 
 func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
-	var push PushFoodStall
+	var push pushFoodStall
 
 	err := c.Bind(&push)
 	if err != nil {
@@ -362,12 +364,12 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-type PushExhibition struct {
+type pushExhibition struct {
 	VisitorF3SiD string `json:"f3sid"`
 }
 
 func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
-	var push PushExhibition
+	var push pushExhibition
 
 	err := c.Bind(&push)
 	if err != nil {
@@ -398,7 +400,7 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-type Status struct {
+type status struct {
 	Charging        bool `json:"charging"`
 	ChargingTime    int  `json:"charging_time"`
 	DischargingTime int  `json:"discharging_time"`
@@ -406,7 +408,7 @@ type Status struct {
 }
 
 func (s *Server) NodeStatusHandler(c echo.Context) error {
-	var status Status
+	var status status
 	err := c.Bind(&status)
 	if err != nil {
 		slog.Default().Error("bind", "error", err)
@@ -454,12 +456,12 @@ func (s *Server) NodeFoodsHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, foodsArray)
 }
 
-type VisitorLookup struct {
+type visitorLookup struct {
 	visitorF3SiD string `param:"f3sid"`
 }
 
 func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
-	var visitorLookup VisitorLookup
+	var visitorLookup visitorLookup
 
 	err := c.Bind(&visitorLookup)
 	if err != nil {
@@ -530,14 +532,14 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 	return echo.ErrBadRequest
 }
 
-type UpdatePush struct {
+type updatePush struct {
 	ID       int `json:"id"`
 	FoodID   int `json:"food_id"`
 	Quantity int `json:"quantity"`
 }
 
 func (s *Server) NodeUpdateFoodStallHandler(c echo.Context) error {
-	var push UpdatePush
+	var push updatePush
 
 	err := c.Bind(&push)
 	if err != nil {
@@ -628,4 +630,24 @@ func (s *Server) NodeFoodCountHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, foodsArray)
+}
+
+func (s *Server) NodeEntryTypeCountHandler(c echo.Context) error {
+	node := c.Get("node").(sqlc.Node)
+
+	exhibitionCount, err := s.DB.CountEntryType(node)
+	if err != nil {
+		slog.Default().Error("exhibition row", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	exhibitions := make([]map[string]interface{}, len(exhibitionCount))
+	for i, exhibition := range exhibitionCount {
+		exhibitions[i] = map[string]interface{}{
+			"type":  exhibition.Type,
+			"count": exhibition.Count,
+		}
+	}
+
+	return c.JSON(http.StatusOK, exhibitions)
 }

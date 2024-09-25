@@ -126,3 +126,8 @@ SELECT SUM(quantity)
 FROM food_stall_logs
 WHERE node_id = $1
     AND food_id = $2;
+-- name: CountEntryLogTypeByNodeId :one
+SELECT COUNT(*)
+FROM entry_logs
+WHERE node_id = $1
+    AND type = $2;

@@ -58,6 +58,8 @@ type Service interface {
 	CountExhibition(node sqlc.Node) (int64, error)
 
 	CountFood(node sqlc.Node) ([]NodeFoodCount, error)
+
+	CountEntryType(node sqlc.Node) ([]NodeEntryCount, error)
 }
 
 type DbService struct {
@@ -705,7 +707,6 @@ func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
 
 	return count, nil
 }
-
 func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
@@ -769,4 +770,36 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 	}
 
 	return foodsList, nil
+}
+
+type NodeEntryCount struct {
+	Type  sqlc.EntryLogsType
+	Count int
+}
+
+func (s *DbService) CountEntryType(node sqlc.Node) ([]NodeEntryCount, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return []NodeEntryCount{}, err
+	}
+	queries := sqlc.New(q)
+
+	var nodeEntryCounts []NodeEntryCount
+	for _, entryType := range []sqlc.EntryLogsType{sqlc.EntryLogsTypeENTERED, sqlc.EntryLogsTypeLEFT} {
+		count, err := queries.CountEntryLogTypeByNodeId(ctx, sqlc.CountEntryLogTypeByNodeIdParams{
+			NodeID: pgtype.Int8{Int64: node.ID, Valid: true},
+			Type:   entryType,
+		})
+		if err != nil {
+			return []NodeEntryCount{}, err
+		}
+		nodeEntryCounts = append(nodeEntryCounts, NodeEntryCount{entryType, int(count)})
+	}
+
+	return nodeEntryCounts, nil
 }
