@@ -18,7 +18,7 @@ FROM entry_logs
 WHERE node_id = $1
 `
 
-func (q *Queries) CountEntryLogByNodeId(ctx context.Context, nodeID pgtype.Int8) (int64, error) {
+func (q *Queries) CountEntryLogByNodeId(ctx context.Context, nodeID int64) (int64, error) {
 	row := q.db.QueryRow(ctx, countEntryLogByNodeId, nodeID)
 	var count int64
 	err := row.Scan(&count)
@@ -33,7 +33,7 @@ WHERE node_id = $1
 `
 
 type CountEntryLogTypeByNodeIdParams struct {
-	NodeID pgtype.Int8
+	NodeID int64
 	Type   EntryLogsType
 }
 
@@ -50,7 +50,7 @@ FROM exhibition_logs
 WHERE node_id = $1
 `
 
-func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.Int8) (int64, error) {
+func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID int64) (int64, error) {
 	row := q.db.QueryRow(ctx, countExhibitionLogByNodeId, nodeID)
 	var count int64
 	err := row.Scan(&count)
@@ -64,7 +64,7 @@ JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.food_id = $1
 `
 
-func (q *Queries) CountFood(ctx context.Context, foodID pgtype.Int8) (int64, error) {
+func (q *Queries) CountFood(ctx context.Context, foodID int64) (int64, error) {
 	row := q.db.QueryRow(ctx, countFood, foodID)
 	var sum int64
 	err := row.Scan(&sum)
@@ -81,7 +81,7 @@ WHERE node_food_id IN (
 )
 `
 
-func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int8) (int64, error) {
+func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID int64) (int64, error) {
 	row := q.db.QueryRow(ctx, countFoodStallLogByNodeId, nodeID)
 	var sum int64
 	err := row.Scan(&sum)
@@ -125,8 +125,8 @@ VALUES ($1, $2, $3)
 `
 
 type CreateEntryLogParams struct {
-	NodeID    pgtype.Int8
-	VisitorID pgtype.Int8
+	NodeID    int64
+	VisitorID int64
 	Type      EntryLogsType
 }
 
@@ -141,8 +141,8 @@ VALUES ($1, $2)
 `
 
 type CreateExhibitionLogParams struct {
-	NodeID    pgtype.Int8
-	VisitorID pgtype.Int8
+	NodeID    int64
+	VisitorID int64
 }
 
 func (q *Queries) CreateExhibitionLog(ctx context.Context, arg CreateExhibitionLogParams) error {
@@ -156,8 +156,8 @@ VALUES ($1, $2, $3)
 `
 
 type CreateFoodStallLogParams struct {
-	NodeFoodID pgtype.Int8
-	VisitorID  pgtype.Int8
+	NodeFoodID int64
+	VisitorID  int64
 	Quantity   int32
 }
 
@@ -210,7 +210,7 @@ ORDER BY id DESC
 LIMIT 10
 `
 
-func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]EntryLog, error) {
+func (q *Queries) GetEntryLogByNodeId(ctx context.Context, nodeID int64) ([]EntryLog, error) {
 	rows, err := q.db.Query(ctx, getEntryLogByNodeId, nodeID)
 	if err != nil {
 		return nil, err
@@ -245,7 +245,7 @@ ORDER BY id DESC
 LIMIT 1
 `
 
-func (q *Queries) GetEntryLogByVisitorId(ctx context.Context, visitorID pgtype.Int8) (EntryLog, error) {
+func (q *Queries) GetEntryLogByVisitorId(ctx context.Context, visitorID int64) (EntryLog, error) {
 	row := q.db.QueryRow(ctx, getEntryLogByVisitorId, visitorID)
 	var i EntryLog
 	err := row.Scan(
@@ -267,7 +267,7 @@ ORDER BY id DESC
 LIMIT 10
 `
 
-func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]ExhibitionLog, error) {
+func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID int64) ([]ExhibitionLog, error) {
 	rows, err := q.db.Query(ctx, getExhibitionLogByNodeId, nodeID)
 	if err != nil {
 		return nil, err
@@ -345,7 +345,7 @@ LIMIT 1
 
 type GetFoodNodeByFoodAndNodeIdParams struct {
 	ID     int64
-	NodeID pgtype.Int8
+	NodeID int64
 }
 
 func (q *Queries) GetFoodNodeByFoodAndNodeId(ctx context.Context, arg GetFoodNodeByFoodAndNodeIdParams) (NodeFood, error) {
@@ -373,7 +373,7 @@ ORDER BY id DESC
 LIMIT 10
 `
 
-func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]FoodStallLog, error) {
+func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID int64) ([]FoodStallLog, error) {
 	rows, err := q.db.Query(ctx, getFoodStallLogByNodeId, nodeID)
 	if err != nil {
 		return nil, err
@@ -407,7 +407,7 @@ JOIN node_foods nf ON f.id = nf.food_id
 WHERE nf.node_id = $1
 `
 
-func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]Food, error) {
+func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID int64) ([]Food, error) {
 	rows, err := q.db.Query(ctx, getFoodsByNodeId, nodeID)
 	if err != nil {
 		return nil, err
@@ -619,8 +619,8 @@ WHERE fsl.id = $1
 type UpdateFoodStallLogParams struct {
 	ID       int64
 	Quantity int32
-	FoodID   pgtype.Int8
-	NodeID   pgtype.Int8
+	FoodID   int64
+	NodeID   int64
 }
 
 func (q *Queries) UpdateFoodStallLog(ctx context.Context, arg UpdateFoodStallLogParams) error {

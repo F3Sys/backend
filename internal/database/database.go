@@ -226,10 +226,7 @@ func (s *DbService) PushEntry(node sqlc.Node, visitorID int64, visitorRandom int
 		return err
 	}
 
-	entryLog, err := queries.GetEntryLogByVisitorId(ctx, pgtype.Int8{
-		Int64: visitorById.ID,
-		Valid: true,
-	})
+	entryLog, err := queries.GetEntryLogByVisitorId(ctx, visitorById.ID)
 
 	var entryLogType sqlc.EntryLogsType
 
@@ -249,15 +246,9 @@ func (s *DbService) PushEntry(node sqlc.Node, visitorID int64, visitorRandom int
 	}
 
 	err = queries.CreateEntryLog(ctx, sqlc.CreateEntryLogParams{
-		NodeID: pgtype.Int8{
-			Int64: node.ID,
-			Valid: true,
-		},
-		VisitorID: pgtype.Int8{
-			Int64: visitorById.ID,
-			Valid: true,
-		},
-		Type: entryLogType,
+		NodeID:    node.ID,
+		VisitorID: visitorById.ID,
+		Type:      entryLogType,
 	})
 	if err != nil {
 		return err
@@ -314,7 +305,7 @@ func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom
 		}
 
 		nodeFoodByNodeAndFood, err := queries.GetFoodNodeByFoodAndNodeId(ctx, sqlc.GetFoodNodeByFoodAndNodeIdParams{
-			NodeID: pgtype.Int8{Int64: node.ID, Valid: true},
+			NodeID: node.ID,
 			ID:     foodById,
 		})
 		if err != nil {
@@ -322,8 +313,8 @@ func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom
 		}
 
 		err = queries.CreateFoodStallLog(ctx, sqlc.CreateFoodStallLogParams{
-			NodeFoodID: pgtype.Int8{Int64: nodeFoodByNodeAndFood.ID, Valid: true},
-			VisitorID:  pgtype.Int8{Int64: visitorById.ID, Valid: true},
+			NodeFoodID: nodeFoodByNodeAndFood.ID,
+			VisitorID:  visitorById.ID,
 			Quantity:   int32(food.Quantity),
 		})
 		if err != nil {
@@ -361,8 +352,8 @@ func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRando
 	}
 
 	err = queries.CreateExhibitionLog(ctx, sqlc.CreateExhibitionLogParams{
-		NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
-		VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
+		NodeID:    node.ID,
+		VisitorID: visitorById.ID,
 	})
 	if err != nil {
 		return err
@@ -391,8 +382,8 @@ func (s *DbService) UpdateFoodLog(node sqlc.Node, id int64, foodID int64, quanti
 	if node.Type == sqlc.NodeTypeFOODSTALL {
 		err = queries.UpdateFoodStallLog(ctx, sqlc.UpdateFoodStallLogParams{
 			ID:       id,
-			FoodID:   pgtype.Int8{Int64: foodID, Valid: true},
-			NodeID:   pgtype.Int8{Int64: node.ID, Valid: true},
+			FoodID:   foodID,
+			NodeID:   node.ID,
 			Quantity: quantity,
 		})
 		if err != nil {
@@ -454,11 +445,7 @@ func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 	queries := sqlc.New(q)
 
 	// Check if visitor exists
-	_, err = queries.GetEntryLogByVisitorId(ctx,
-		pgtype.Int8{
-			Int64: visitorID,
-			Valid: true,
-		})
+	_, err = queries.GetEntryLogByVisitorId(ctx, visitorID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return true, nil
@@ -504,7 +491,7 @@ func (s *DbService) EntryRows(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog,
 	}
 	queries := sqlc.New(q)
 
-	rows, err := queries.GetEntryLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
+	rows, err := queries.GetEntryLogByNodeId(ctx, node.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -512,7 +499,7 @@ func (s *DbService) EntryRows(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog,
 	var rowLog []EntryRowLog
 
 	for _, row := range rows {
-		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID.Int64)
+		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID)
 		if err != nil {
 			return nil, err
 		}
@@ -540,7 +527,7 @@ func (s *DbService) FoodstallRows(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstal
 	}
 	queries := sqlc.New(q)
 
-	rows, err := queries.GetFoodStallLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
+	rows, err := queries.GetFoodStallLogByNodeId(ctx, node.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -548,7 +535,7 @@ func (s *DbService) FoodstallRows(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstal
 	var rowLog []FoodstallRowLog
 
 	for _, row := range rows {
-		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID.Int64)
+		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID)
 		if err != nil {
 			return nil, err
 		}
@@ -558,7 +545,7 @@ func (s *DbService) FoodstallRows(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstal
 			return nil, err
 		}
 
-		foodByNodeFoodId, err := queries.GetFoodByNodeFoodId(ctx, row.NodeFoodID.Int64)
+		foodByNodeFoodId, err := queries.GetFoodByNodeFoodId(ctx, row.NodeFoodID)
 		if err != nil {
 			return nil, err
 		}
@@ -586,7 +573,7 @@ func (s *DbService) ExhibitionRows(node sqlc.Node, sqid *sqids.Sqids) ([]Exhibit
 	}
 	queries := sqlc.New(q)
 
-	rows, err := queries.GetExhibitionLogByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
+	rows, err := queries.GetExhibitionLogByNodeId(ctx, node.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +581,7 @@ func (s *DbService) ExhibitionRows(node sqlc.Node, sqid *sqids.Sqids) ([]Exhibit
 	var rowLog []ExhibitionRowLog
 
 	for _, row := range rows {
-		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID.Int64)
+		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID)
 		if err != nil {
 			return nil, err
 		}
@@ -658,7 +645,7 @@ func (s *DbService) Foods(node sqlc.Node) ([]NodeFood, error) {
 	}
 	queries := sqlc.New(q)
 
-	foods, err := queries.GetFoodsByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
+	foods, err := queries.GetFoodsByNodeId(ctx, node.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -684,10 +671,7 @@ func (s *DbService) CountEntry(node sqlc.Node) (int64, error) {
 	}
 	queries := sqlc.New(q)
 
-	count, err := queries.CountEntryLogByNodeId(ctx, pgtype.Int8{
-		Int64: node.ID,
-		Valid: true,
-	})
+	count, err := queries.CountEntryLogByNodeId(ctx, node.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -707,10 +691,7 @@ func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
 	}
 	queries := sqlc.New(q)
 
-	count, err := queries.CountFoodStallLogByNodeId(ctx, pgtype.Int8{
-		Int64: node.ID,
-		Valid: true,
-	})
+	count, err := queries.CountFoodStallLogByNodeId(ctx, node.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -729,10 +710,7 @@ func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 	}
 	queries := sqlc.New(q)
 
-	count, err := queries.CountExhibitionLogByNodeId(ctx, pgtype.Int8{
-		Int64: node.ID,
-		Valid: true,
-	})
+	count, err := queries.CountExhibitionLogByNodeId(ctx, node.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -758,7 +736,7 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 	}
 	queries := sqlc.New(q)
 
-	foods, err := queries.GetFoodsByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
+	foods, err := queries.GetFoodsByNodeId(ctx, node.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -766,7 +744,7 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 	var foodsList []NodeFoodCount
 
 	for _, food := range foods {
-		foodCountById, err := queries.CountFood(ctx, pgtype.Int8{Int64: food.ID, Valid: true})
+		foodCountById, err := queries.CountFood(ctx, food.ID)
 		if err != nil {
 			return []NodeFoodCount{}, err
 		}
@@ -796,7 +774,7 @@ func (s *DbService) CountEntryType(node sqlc.Node) ([]NodeEntryCount, error) {
 	var nodeEntryCounts []NodeEntryCount
 	for _, entryType := range []sqlc.EntryLogsType{sqlc.EntryLogsTypeENTERED, sqlc.EntryLogsTypeLEFT} {
 		count, err := queries.CountEntryLogTypeByNodeId(ctx, sqlc.CountEntryLogTypeByNodeIdParams{
-			NodeID: pgtype.Int8{Int64: node.ID, Valid: true},
+			NodeID: node.ID,
 			Type:   entryType,
 		})
 		if err != nil {

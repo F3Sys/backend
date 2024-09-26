@@ -21,8 +21,8 @@ CREATE TABLE foods (
 -- Node Foods table
 CREATE TABLE node_foods (
     id BIGSERIAL PRIMARY KEY,
-    node_id BIGINT,
-    food_id BIGINT,
+    node_id BIGINT NOT NULL,
+    food_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (node_id) REFERENCES nodes(id),
@@ -60,7 +60,7 @@ CREATE TABLE visitors (
 -- Student table
 CREATE TABLE students (
     id BIGSERIAL PRIMARY KEY,
-    visitor_id BIGINT UNIQUE,
+    visitor_id BIGINT UNIQUE NOT NULL,
     grade INTEGER NOT NULL,
     class INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -71,8 +71,8 @@ CREATE TYPE entry_logs_type AS ENUM ('ENTERED', 'LEFT');
 -- EntryLog table
 CREATE TABLE entry_logs (
     id BIGSERIAL PRIMARY KEY,
-    node_id BIGINT,
-    visitor_id BIGINT,
+    node_id BIGINT NOT NULL,
+    visitor_id BIGINT NOT NULL,
     TYPE entry_logs_type NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -82,8 +82,8 @@ CREATE TABLE entry_logs (
 -- FoodStallLog table
 CREATE TABLE food_stall_logs (
     id BIGSERIAL PRIMARY KEY,
-    node_food_id BIGINT,
-    visitor_id BIGINT,
+    node_food_id BIGINT NOT NULL,
+    visitor_id BIGINT NOT NULL,
     quantity INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -93,8 +93,8 @@ CREATE TABLE food_stall_logs (
 -- ExhibitionLog table
 CREATE TABLE exhibition_logs (
     id BIGSERIAL PRIMARY KEY,
-    node_id BIGINT,
-    visitor_id BIGINT,
+    node_id BIGINT NOT NULL,
+    visitor_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (node_id) REFERENCES nodes(id),
@@ -103,8 +103,8 @@ CREATE TABLE exhibition_logs (
 -- ExhibitionReviewLog table
 CREATE TABLE exhibition_review_logs (
     id BIGSERIAL PRIMARY KEY,
-    node_id BIGINT,
-    visitor_id BIGINT,
+    node_id BIGINT NOT NULL,
+    visitor_id BIGINT NOT NULL,
     rating INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

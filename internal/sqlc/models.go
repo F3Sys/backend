@@ -110,8 +110,8 @@ type Battery struct {
 
 type EntryLog struct {
 	ID        int64
-	NodeID    pgtype.Int8
-	VisitorID pgtype.Int8
+	NodeID    int64
+	VisitorID int64
 	Type      EntryLogsType
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
@@ -119,16 +119,16 @@ type EntryLog struct {
 
 type ExhibitionLog struct {
 	ID        int64
-	NodeID    pgtype.Int8
-	VisitorID pgtype.Int8
+	NodeID    int64
+	VisitorID int64
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }
 
 type ExhibitionReviewLog struct {
 	ID        int64
-	NodeID    pgtype.Int8
-	VisitorID pgtype.Int8
+	NodeID    int64
+	VisitorID int64
 	Rating    int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
@@ -144,8 +144,8 @@ type Food struct {
 
 type FoodStallLog struct {
 	ID         int64
-	NodeFoodID pgtype.Int8
-	VisitorID  pgtype.Int8
+	NodeFoodID int64
+	VisitorID  int64
 	Quantity   int32
 	CreatedAt  pgtype.Timestamp
 	UpdatedAt  pgtype.Timestamp
@@ -171,15 +171,15 @@ type Node struct {
 
 type NodeFood struct {
 	ID        int64
-	NodeID    pgtype.Int8
-	FoodID    pgtype.Int8
+	NodeID    int64
+	FoodID    int64
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }
 
 type Student struct {
 	ID        int64
-	VisitorID pgtype.Int8
+	VisitorID int64
 	Grade     int32
 	Class     int32
 	CreatedAt pgtype.Timestamp
