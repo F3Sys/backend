@@ -561,6 +561,9 @@ func (s *Server) NodeUpdateFoodStallHandler(c echo.Context) error {
 func (s *Server) NodeIpHandler(c echo.Context) error {
 	ip := c.RealIP()
 
+	slog.Default().Info("turi")
+	slog.Default().Info("ip", "ip", ip)
+
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
 		slog.Default().Error("ParseAddr", "error", err)
