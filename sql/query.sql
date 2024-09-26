@@ -169,3 +169,32 @@ SELECT COUNT(*)
 FROM entry_logs
 WHERE node_id = $1
     AND type = $2;
+-- name: CountEntryPerHourByNodeId :many
+SELECT COUNT(*) AS count,
+       EXTRACT(HOUR FROM el.created_at) AS hour
+FROM entry_logs el
+WHERE el.node_id = $1 
+  AND type = $2
+  AND DATE(el.created_at) = CURRENT_DATE
+GROUP BY hour
+ORDER BY hour DESC
+LIMIT 24;
+-- name: CountFoodStallPerHourByFoodId :many
+SELECT SUM(fsl.quantity) AS count,
+       EXTRACT(HOUR FROM fsl.created_at) AS hour
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+WHERE nf.food_id = $1
+  AND DATE(fsl.created_at) = CURRENT_DATE
+GROUP BY hour
+ORDER BY hour
+LIMIT 24;
+-- name: CountExhibitionPerHourByNodeId :many
+SELECT COUNT(*) AS count,
+       EXTRACT(HOUR FROM el.created_at) AS hour
+FROM exhibition_logs el
+WHERE el.node_id = $1
+  AND DATE(el.created_at) = CURRENT_DATE
+GROUP BY hour
+ORDER BY hour DESC
+LIMIT 24;

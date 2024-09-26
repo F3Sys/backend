@@ -125,6 +125,14 @@ func (s *Server) ApiRoutes() *echo.Echo {
 
 	push.PATCH("/foodstall", s.NodeUpdateFoodStallHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
 
+	data := protected.Group("/data")
+
+	data.GET("/entry", s.NodeEntryPerHourCountHandler, TypeMiddleware(sqlc.NodeTypeENTRY))
+
+	data.GET("/foodstall", s.NodeFoodStallPerHourCountHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
+
+	data.GET("/exhibition", s.NodeExhibitionPerHourCountHandler, TypeMiddleware(sqlc.NodeTypeEXHIBITION))
+
 	protected.PATCH("/status", s.NodeStatusHandler, TypeMiddleware(sqlc.NodeTypeENTRY, sqlc.NodeTypeFOODSTALL, sqlc.NodeTypeEXHIBITION))
 
 	return api
@@ -653,4 +661,40 @@ func (s *Server) NodeEntryTypeCountHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, exhibitions)
+}
+
+func (s *Server) NodeEntryPerHourCountHandler(c echo.Context) error {
+	node := c.Get("node").(sqlc.Node)
+
+	exhibitionCount, err := s.DB.CountEntryPerHour(node)
+	if err != nil {
+		slog.Default().Error("exhibition row", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	return c.JSON(http.StatusOK, exhibitionCount)
+}
+
+func (s *Server) NodeFoodStallPerHourCountHandler(c echo.Context) error {
+	node := c.Get("node").(sqlc.Node)
+
+	exhibitionCount, err := s.DB.CountFoodStallPerHour(node)
+	if err != nil {
+		slog.Default().Error("exhibition row", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	return c.JSON(http.StatusOK, exhibitionCount)
+}
+
+func (s *Server) NodeExhibitionPerHourCountHandler(c echo.Context) error {
+	node := c.Get("node").(sqlc.Node)
+
+	exhibitionCount, err := s.DB.CountExhibitionPerHour(node)
+	if err != nil {
+		slog.Default().Error("exhibition row", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	return c.JSON(http.StatusOK, exhibitionCount)
 }

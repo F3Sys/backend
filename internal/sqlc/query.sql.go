@@ -44,6 +44,48 @@ func (q *Queries) CountEntryLogTypeByNodeId(ctx context.Context, arg CountEntryL
 	return count, err
 }
 
+const countEntryPerHourByNodeId = `-- name: CountEntryPerHourByNodeId :many
+SELECT COUNT(*) AS count,
+       EXTRACT(HOUR FROM el.created_at) AS hour
+FROM entry_logs el
+WHERE el.node_id = $1 
+  AND type = $2
+  AND DATE(el.created_at) = CURRENT_DATE
+GROUP BY hour
+ORDER BY hour DESC
+LIMIT 24
+`
+
+type CountEntryPerHourByNodeIdParams struct {
+	NodeID int64
+	Type   EntryLogsType
+}
+
+type CountEntryPerHourByNodeIdRow struct {
+	Count int64
+	Hour  pgtype.Numeric
+}
+
+func (q *Queries) CountEntryPerHourByNodeId(ctx context.Context, arg CountEntryPerHourByNodeIdParams) ([]CountEntryPerHourByNodeIdRow, error) {
+	rows, err := q.db.Query(ctx, countEntryPerHourByNodeId, arg.NodeID, arg.Type)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountEntryPerHourByNodeIdRow
+	for rows.Next() {
+		var i CountEntryPerHourByNodeIdRow
+		if err := rows.Scan(&i.Count, &i.Hour); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countExhibitionLogByNodeId = `-- name: CountExhibitionLogByNodeId :one
 SELECT COUNT(*)
 FROM exhibition_logs
@@ -55,6 +97,42 @@ func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID int64) 
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const countExhibitionPerHourByNodeId = `-- name: CountExhibitionPerHourByNodeId :many
+SELECT COUNT(*) AS count,
+       EXTRACT(HOUR FROM el.created_at) AS hour
+FROM exhibition_logs el
+WHERE el.node_id = $1
+  AND DATE(el.created_at) = CURRENT_DATE
+GROUP BY hour
+ORDER BY hour DESC
+LIMIT 24
+`
+
+type CountExhibitionPerHourByNodeIdRow struct {
+	Count int64
+	Hour  pgtype.Numeric
+}
+
+func (q *Queries) CountExhibitionPerHourByNodeId(ctx context.Context, nodeID int64) ([]CountExhibitionPerHourByNodeIdRow, error) {
+	rows, err := q.db.Query(ctx, countExhibitionPerHourByNodeId, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountExhibitionPerHourByNodeIdRow
+	for rows.Next() {
+		var i CountExhibitionPerHourByNodeIdRow
+		if err := rows.Scan(&i.Count, &i.Hour); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const countFood = `-- name: CountFood :one
@@ -86,6 +164,43 @@ func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID int64) (
 	var sum int64
 	err := row.Scan(&sum)
 	return sum, err
+}
+
+const countFoodStallPerHourByFoodId = `-- name: CountFoodStallPerHourByFoodId :many
+SELECT SUM(fsl.quantity) AS count,
+       EXTRACT(HOUR FROM fsl.created_at) AS hour
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+WHERE nf.food_id = $1
+  AND DATE(fsl.created_at) = CURRENT_DATE
+GROUP BY hour
+ORDER BY hour
+LIMIT 24
+`
+
+type CountFoodStallPerHourByFoodIdRow struct {
+	Count int64
+	Hour  pgtype.Numeric
+}
+
+func (q *Queries) CountFoodStallPerHourByFoodId(ctx context.Context, foodID int64) ([]CountFoodStallPerHourByFoodIdRow, error) {
+	rows, err := q.db.Query(ctx, countFoodStallPerHourByFoodId, foodID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountFoodStallPerHourByFoodIdRow
+	for rows.Next() {
+		var i CountFoodStallPerHourByFoodIdRow
+		if err := rows.Scan(&i.Count, &i.Hour); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const createBattery = `-- name: CreateBattery :exec
