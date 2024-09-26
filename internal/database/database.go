@@ -858,7 +858,7 @@ func (s *DbService) CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerHour, e
 		var countPerHour = [24]FoodPerHour{}
 
 		for _, row := range countPerHourByFood {
-			countPerHour[int(row.Hour-1)] = FoodPerHour{int(row.Hour), int(row.Count)}
+			countPerHour[int(row.Hour)] = FoodPerHour{int(row.Hour), int(row.Count)}
 		}
 		countsPerHour[i] = FoodStallPerHour{food.Name, countPerHour}
 	}
