@@ -46,7 +46,7 @@ func (q *Queries) CountEntryLogTypeByNodeId(ctx context.Context, arg CountEntryL
 
 const countEntryPerHourByNodeId = `-- name: CountEntryPerHourByNodeId :many
 SELECT COUNT(*) AS count,
-       EXTRACT(HOUR FROM el.created_at) AS hour
+       DATE_PART('hour', el.created_at) AS hour
 FROM entry_logs el
 WHERE el.node_id = $1 
   AND type = $2
@@ -63,7 +63,7 @@ type CountEntryPerHourByNodeIdParams struct {
 
 type CountEntryPerHourByNodeIdRow struct {
 	Count int64
-	Hour  pgtype.Numeric
+	Hour  float64
 }
 
 func (q *Queries) CountEntryPerHourByNodeId(ctx context.Context, arg CountEntryPerHourByNodeIdParams) ([]CountEntryPerHourByNodeIdRow, error) {
@@ -101,7 +101,7 @@ func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID int64) 
 
 const countExhibitionPerHourByNodeId = `-- name: CountExhibitionPerHourByNodeId :many
 SELECT COUNT(*) AS count,
-       EXTRACT(HOUR FROM el.created_at) AS hour
+       DATE_PART('hour', el.created_at) AS hour
 FROM exhibition_logs el
 WHERE el.node_id = $1
   AND DATE(el.created_at) = CURRENT_DATE
@@ -112,7 +112,7 @@ LIMIT 24
 
 type CountExhibitionPerHourByNodeIdRow struct {
 	Count int64
-	Hour  pgtype.Numeric
+	Hour  float64
 }
 
 func (q *Queries) CountExhibitionPerHourByNodeId(ctx context.Context, nodeID int64) ([]CountExhibitionPerHourByNodeIdRow, error) {
@@ -168,7 +168,7 @@ func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID int64) (
 
 const countFoodStallPerHourByFoodId = `-- name: CountFoodStallPerHourByFoodId :many
 SELECT SUM(fsl.quantity) AS count,
-       EXTRACT(HOUR FROM fsl.created_at) AS hour
+       DATE_PART('hour', fsl.created_at) AS hour
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.food_id = $1
@@ -180,7 +180,7 @@ LIMIT 24
 
 type CountFoodStallPerHourByFoodIdRow struct {
 	Count int64
-	Hour  pgtype.Numeric
+	Hour  float64
 }
 
 func (q *Queries) CountFoodStallPerHourByFoodId(ctx context.Context, foodID int64) ([]CountFoodStallPerHourByFoodIdRow, error) {
