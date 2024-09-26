@@ -1,24 +1,24 @@
 CREATE TYPE node_type AS ENUM ('ENTRY', 'FOODSTALL', 'EXHIBITION');
+-- Foods table
+CREATE TABLE foods (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 -- Node table
 CREATE TABLE nodes (
     id BIGSERIAL PRIMARY KEY,
+    food_id BIGINT,
     key TEXT UNIQUE,
     name TEXT NOT NULL,
     ip INET UNIQUE,
     type node_type NOT NULL,
     is_review BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
--- Foods table
-CREATE TABLE foods (
-    id BIGSERIAL PRIMARY KEY,
-    node_id BIGINT,
-    name TEXT NOT NULL,
-    price INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES nodes(id)
+    FOREIGN KEY (food_id) REFERENCES foods(id)
 );
 -- Battery table
 CREATE TABLE batteries (
@@ -31,6 +31,13 @@ CREATE TABLE batteries (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (node_id) REFERENCES nodes(id)
+);
+-- Model table
+CREATE TABLE models (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- Visitor table
 CREATE TABLE visitors (
@@ -51,13 +58,6 @@ CREATE TABLE students (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (visitor_id) REFERENCES visitors(id)
-);
--- Model table
-CREATE TABLE models (
-    id BIGSERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TYPE entry_logs_type AS ENUM ('ENTERED', 'LEFT');
 -- EntryLog table

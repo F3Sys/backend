@@ -136,7 +136,6 @@ type ExhibitionReviewLog struct {
 
 type Food struct {
 	ID        int64
-	NodeID    pgtype.Int8
 	Name      string
 	Price     int32
 	CreatedAt pgtype.Timestamp
@@ -162,6 +161,7 @@ type Model struct {
 
 type Node struct {
 	ID        int64
+	FoodID    pgtype.Int8
 	Key       pgtype.Text
 	Name      string
 	Ip        *netip.Addr

@@ -43,11 +43,11 @@ type Service interface {
 
 	IsVisitorFirst(visitorID int64) (bool, error)
 
-	EntryRow(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, error)
+	EntryRows(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, error)
 
-	FoodstallRow(node sqlc.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error)
+	FoodstallRows(node sqlc.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error)
 
-	ExhibitionRow(node sqlc.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error)
+	ExhibitionRows(node sqlc.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error)
 
 	Foods(node sqlc.Node) ([]NodeFood, error)
 
@@ -484,7 +484,7 @@ type ExhibitionRowLog struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *DbService) EntryRow(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, error) {
+func (s *DbService) EntryRows(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -520,7 +520,7 @@ func (s *DbService) EntryRow(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog, 
 	return rowLog, nil
 }
 
-func (s *DbService) FoodstallRow(node sqlc.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error) {
+func (s *DbService) FoodstallRows(node sqlc.Node, sqid *sqids.Sqids) ([]FoodstallRowLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -561,7 +561,7 @@ func (s *DbService) FoodstallRow(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstall
 	return rowLog, nil
 }
 
-func (s *DbService) ExhibitionRow(node sqlc.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error) {
+func (s *DbService) ExhibitionRows(node sqlc.Node, sqid *sqids.Sqids) ([]ExhibitionRowLog, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -645,10 +645,7 @@ func (s *DbService) Foods(node sqlc.Node) ([]NodeFood, error) {
 	}
 	queries := sqlc.New(q)
 
-	foods, err := queries.GetFoodsByNodeId(ctx, pgtype.Int8{
-		Int64: node.ID,
-		Valid: true,
-	})
+	foods, err := queries.GetFoodsByNodeId(ctx, node.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -748,10 +745,7 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 	}
 	queries := sqlc.New(q)
 
-	foods, err := queries.GetFoodsByNodeId(ctx, pgtype.Int8{
-		Int64: node.ID,
-		Valid: true,
-	})
+	foods, err := queries.GetFoodsByNodeId(ctx, node.ID)
 	if err != nil {
 		return nil, err
 	}

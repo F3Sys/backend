@@ -503,7 +503,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 
 	switch node.Type {
 	case sqlc.NodeTypeENTRY:
-		entryRow, err := s.DB.EntryRow(node, sqid)
+		entryRow, err := s.DB.EntryRows(node, sqid)
 		if err != nil {
 			slog.Default().Error("entry row", "error", err)
 			return echo.ErrBadRequest
@@ -511,7 +511,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 
 		return c.JSON(http.StatusOK, entryRow)
 	case sqlc.NodeTypeFOODSTALL:
-		foodstallRawLog, err := s.DB.FoodstallRow(node, sqid)
+		foodstallRawLog, err := s.DB.FoodstallRows(node, sqid)
 		if err != nil {
 			slog.Default().Error("foodstall row", "error", err)
 			return echo.ErrBadRequest
@@ -520,7 +520,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 		return c.JSON(http.StatusOK, foodstallRawLog)
 
 	case sqlc.NodeTypeEXHIBITION:
-		exhibitionRowLog, err := s.DB.ExhibitionRow(node, sqid)
+		exhibitionRowLog, err := s.DB.ExhibitionRows(node, sqid)
 		if err != nil {
 			slog.Default().Error("exhibition row", "error", err)
 			return echo.ErrBadRequest

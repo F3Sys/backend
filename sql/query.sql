@@ -67,9 +67,10 @@ FROM foods
 WHERE id = $1
 LIMIT 1;
 -- name: GetFoodsByNodeId :many
-SELECT *
-FROM foods
-WHERE node_id = $1;
+SELECT f.*
+FROM foods f
+JOIN nodes n ON f.id = n.food_id
+WHERE n.id = $1;
 -- name: GetEntryLogByVisitorId :one
 SELECT *
 FROM entry_logs

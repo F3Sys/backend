@@ -295,7 +295,7 @@ func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.In
 }
 
 const getFoodById = `-- name: GetFoodById :one
-SELECT id, node_id, name, price, created_at, updated_at
+SELECT id, name, price, created_at, updated_at
 FROM foods
 WHERE id = $1
 LIMIT 1
@@ -306,7 +306,6 @@ func (q *Queries) GetFoodById(ctx context.Context, id int64) (Food, error) {
 	var i Food
 	err := row.Scan(
 		&i.ID,
-		&i.NodeID,
 		&i.Name,
 		&i.Price,
 		&i.CreatedAt,
@@ -352,13 +351,14 @@ func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int
 }
 
 const getFoodsByNodeId = `-- name: GetFoodsByNodeId :many
-SELECT id, node_id, name, price, created_at, updated_at
-FROM foods
-WHERE node_id = $1
+SELECT f.id, f.name, f.price, f.created_at, f.updated_at
+FROM foods f
+JOIN nodes n ON f.id = n.food_id
+WHERE n.id = $1
 `
 
-func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]Food, error) {
-	rows, err := q.db.Query(ctx, getFoodsByNodeId, nodeID)
+func (q *Queries) GetFoodsByNodeId(ctx context.Context, id int64) ([]Food, error) {
+	rows, err := q.db.Query(ctx, getFoodsByNodeId, id)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +368,6 @@ func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]F
 		var i Food
 		if err := rows.Scan(
 			&i.ID,
-			&i.NodeID,
 			&i.Name,
 			&i.Price,
 			&i.CreatedAt,
@@ -385,7 +384,7 @@ func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]F
 }
 
 const getNodeById = `-- name: GetNodeById :one
-SELECT id, key, name, ip, type, is_review, created_at, updated_at
+SELECT id, food_id, key, name, ip, type, is_review, created_at, updated_at
 FROM nodes
 WHERE id = $1
 LIMIT 1
@@ -396,6 +395,7 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 	var i Node
 	err := row.Scan(
 		&i.ID,
+		&i.FoodID,
 		&i.Key,
 		&i.Name,
 		&i.Ip,
@@ -408,7 +408,7 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 }
 
 const getNodeByIp = `-- name: GetNodeByIp :one
-SELECT id, key, name, ip, type, is_review, created_at, updated_at
+SELECT id, food_id, key, name, ip, type, is_review, created_at, updated_at
 FROM nodes
 WHERE ip = $1
 LIMIT 1
@@ -419,6 +419,7 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 	var i Node
 	err := row.Scan(
 		&i.ID,
+		&i.FoodID,
 		&i.Key,
 		&i.Name,
 		&i.Ip,
@@ -431,7 +432,7 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 }
 
 const getNodeByKey = `-- name: GetNodeByKey :one
-SELECT id, key, name, ip, type, is_review, created_at, updated_at
+SELECT id, food_id, key, name, ip, type, is_review, created_at, updated_at
 FROM nodes
 WHERE key = $1
 LIMIT 1
@@ -442,6 +443,7 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 	var i Node
 	err := row.Scan(
 		&i.ID,
+		&i.FoodID,
 		&i.Key,
 		&i.Name,
 		&i.Ip,
