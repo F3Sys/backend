@@ -86,6 +86,16 @@ VALUES ($1, $2);
 -- name: CreateFoodStallLog :exec
 INSERT INTO food_stall_logs (node_food_id, visitor_id, quantity)
 VALUES ($1, $2, $3);
+-- name: CreateFoodStalllogByNodeFoodId :exec
+INSERT INTO food_stall_logs (node_food_id, visitor_id, quantity)
+VALUES (
+    (SELECT id
+     FROM node_foods
+     WHERE food_id = $1
+       AND node_id = $2),
+    $3,
+    $4
+);
 -- name: GetFoodByNodeFoodId :one
 SELECT f.*
 FROM foods f

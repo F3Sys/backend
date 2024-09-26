@@ -304,18 +304,11 @@ func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom
 			return fmt.Errorf("food with id %d not found in map", food.ID)
 		}
 
-		nodeFoodByNodeAndFood, err := queries.GetFoodNodeByFoodAndNodeId(ctx, sqlc.GetFoodNodeByFoodAndNodeIdParams{
-			NodeID: node.ID,
-			ID:     foodById,
-		})
-		if err != nil {
-			return err
-		}
-
-		err = queries.CreateFoodStallLog(ctx, sqlc.CreateFoodStallLogParams{
-			NodeFoodID: nodeFoodByNodeAndFood.ID,
-			VisitorID:  visitorById.ID,
-			Quantity:   int32(food.Quantity),
+		err = queries.CreateFoodStalllogByNodeFoodId(ctx, sqlc.CreateFoodStalllogByNodeFoodIdParams{
+			NodeID:    node.ID,
+			FoodID:    foodById,
+			VisitorID: visitorById.ID,
+			Quantity:  int32(food.Quantity),
 		})
 		if err != nil {
 			return err

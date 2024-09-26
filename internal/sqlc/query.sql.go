@@ -166,6 +166,35 @@ func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLog
 	return err
 }
 
+const createFoodStalllogByNodeFoodId = `-- name: CreateFoodStalllogByNodeFoodId :exec
+INSERT INTO food_stall_logs (node_food_id, visitor_id, quantity)
+VALUES (
+    (SELECT id
+     FROM node_foods
+     WHERE food_id = $1
+       AND node_id = $2),
+    $3,
+    $4
+)
+`
+
+type CreateFoodStalllogByNodeFoodIdParams struct {
+	FoodID    int64
+	NodeID    int64
+	VisitorID int64
+	Quantity  int32
+}
+
+func (q *Queries) CreateFoodStalllogByNodeFoodId(ctx context.Context, arg CreateFoodStalllogByNodeFoodIdParams) error {
+	_, err := q.db.Exec(ctx, createFoodStalllogByNodeFoodId,
+		arg.FoodID,
+		arg.NodeID,
+		arg.VisitorID,
+		arg.Quantity,
+	)
+	return err
+}
+
 const createVisitor = `-- name: CreateVisitor :one
 INSERT INTO visitors (ip, random)
 VALUES ($1, $2)
