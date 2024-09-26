@@ -759,10 +759,7 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 	var foodsList []NodeFoodCount
 
 	for _, food := range foods {
-		foodCountById, err := queries.CountFood(ctx, sqlc.CountFoodParams{
-			NodeID: pgtype.Int8{Int64: node.ID, Valid: true},
-			FoodID: pgtype.Int8{Int64: food.ID, Valid: true},
-		})
+		foodCountById, err := queries.CountFood(ctx, pgtype.Int8{Int64: food.ID, Valid: true})
 		if err != nil {
 			return []NodeFoodCount{}, err
 		}
