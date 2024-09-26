@@ -549,7 +549,7 @@ func (s *Server) NodeUpdateFoodStallHandler(c echo.Context) error {
 
 	node := c.Get("node").(sqlc.Node)
 
-	err = s.DB.UpdatePushNode(node, int64(push.ID), int64(push.FoodID), int32(push.Quantity))
+	err = s.DB.UpdateFoodLog(node, int64(push.ID), int64(push.FoodID), int32(push.Quantity))
 	if err != nil {
 		slog.Default().Error("update push", "error", err)
 		return echo.ErrBadRequest

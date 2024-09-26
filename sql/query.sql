@@ -69,8 +69,8 @@ LIMIT 1;
 -- name: GetFoodsByNodeId :many
 SELECT f.*
 FROM foods f
-JOIN nodes n ON f.id = n.food_id
-WHERE n.id = $1;
+JOIN node_foods nf ON f.id = nf.food_id
+WHERE nf.node_id = $1;
 -- name: GetEntryLogByVisitorId :one
 SELECT *
 FROM entry_logs
@@ -84,8 +84,21 @@ VALUES ($1, $2, $3);
 INSERT INTO exhibition_logs (node_id, visitor_id)
 VALUES ($1, $2);
 -- name: CreateFoodStallLog :exec
-INSERT INTO food_stall_logs (node_id, visitor_id, food_id, quantity)
-VALUES ($1, $2, $3, $4);
+INSERT INTO food_stall_logs (node_food_id, visitor_id, quantity)
+VALUES ($1, $2, $3);
+-- name: GetFoodByNodeFoodId :one
+SELECT f.*
+FROM foods f
+JOIN node_foods nf ON f.id = nf.food_id
+WHERE nf.id = $1
+LIMIT 1;
+-- name: GetFoodNodeByFoodAndNodeId :one
+SELECT nf.*
+FROM node_foods nf
+JOIN foods f ON nf.food_id = f.id
+WHERE f.id = $1
+  AND nf.node_id = $2
+LIMIT 1;
 -- name: GetEntryLogByNodeId :many
 SELECT *
 FROM entry_logs
@@ -95,7 +108,11 @@ LIMIT 10;
 -- name: GetFoodStallLogByNodeId :many
 SELECT *
 FROM food_stall_logs
-WHERE node_id = $1
+WHERE node_food_id IN (
+    SELECT id
+    FROM node_foods
+    WHERE node_id = $1
+)
 ORDER BY id DESC
 LIMIT 10;
 -- name: GetExhibitionLogByNodeId :many
@@ -105,11 +122,17 @@ WHERE node_id = $1
 ORDER BY id DESC
 LIMIT 10;
 -- name: UpdateFoodStallLog :exec
-UPDATE food_stall_logs
+UPDATE food_stall_logs fsl
 SET quantity = $2,
-    food_id = $3,
-    updated_at = now()
-WHERE id = $1;
+    node_food_id = (
+        SELECT nf.id
+        FROM node_foods nf
+        WHERE nf.food_id = $3
+          AND nf.node_id = $4  -- Check if the node_id owns the food
+        LIMIT 1
+    ),
+    updated_at = NOW()
+WHERE fsl.id = $1;
 -- name: CountEntryLogByNodeId :one
 SELECT COUNT(*)
 FROM entry_logs
@@ -117,15 +140,20 @@ WHERE node_id = $1;
 -- name: CountFoodStallLogByNodeId :one
 SELECT SUM(quantity)
 FROM food_stall_logs
-WHERE node_id = $1;
+WHERE node_food_id IN (
+    SELECT id
+    FROM node_foods
+    WHERE node_id = $1
+);
 -- name: CountExhibitionLogByNodeId :one
 SELECT COUNT(*)
 FROM exhibition_logs
 WHERE node_id = $1;
 -- name: CountFood :one
-SELECT SUM(quantity)
-FROM food_stall_logs
-WHERE food_id = $1;
+SELECT SUM(fsl.quantity)
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+WHERE nf.food_id = $1;
 -- name: CountEntryLogTypeByNodeId :one
 SELECT COUNT(*)
 FROM entry_logs

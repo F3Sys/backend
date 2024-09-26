@@ -1,4 +1,15 @@
 CREATE TYPE node_type AS ENUM ('ENTRY', 'FOODSTALL', 'EXHIBITION');
+-- Node table
+CREATE TABLE nodes (
+    id BIGSERIAL PRIMARY KEY,
+    key TEXT UNIQUE,
+    name TEXT NOT NULL,
+    ip INET UNIQUE,
+    type node_type NOT NULL,
+    is_review BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 -- Foods table
 CREATE TABLE foods (
     id BIGSERIAL PRIMARY KEY,
@@ -7,17 +18,14 @@ CREATE TABLE foods (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
--- Node table
-CREATE TABLE nodes (
+-- Node Foods table
+CREATE TABLE node_foods (
     id BIGSERIAL PRIMARY KEY,
+    node_id BIGINT,
     food_id BIGINT,
-    key TEXT UNIQUE,
-    name TEXT NOT NULL,
-    ip INET UNIQUE,
-    type node_type NOT NULL,
-    is_review BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (node_id) REFERENCES nodes(id),
     FOREIGN KEY (food_id) REFERENCES foods(id)
 );
 -- Battery table
@@ -74,15 +82,13 @@ CREATE TABLE entry_logs (
 -- FoodStallLog table
 CREATE TABLE food_stall_logs (
     id BIGSERIAL PRIMARY KEY,
-    node_id BIGINT,
+    node_food_id BIGINT,
     visitor_id BIGINT,
-    food_id BIGINT,
     quantity INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES nodes(id),
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id),
-    FOREIGN KEY (food_id) REFERENCES foods(id)
+    FOREIGN KEY (node_food_id) REFERENCES node_foods(id),
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id)
 );
 -- ExhibitionLog table
 CREATE TABLE exhibition_logs (

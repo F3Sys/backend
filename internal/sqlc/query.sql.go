@@ -58,9 +58,10 @@ func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID pgtype.
 }
 
 const countFood = `-- name: CountFood :one
-SELECT SUM(quantity)
-FROM food_stall_logs
-WHERE food_id = $1
+SELECT SUM(fsl.quantity)
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+WHERE nf.food_id = $1
 `
 
 func (q *Queries) CountFood(ctx context.Context, foodID pgtype.Int8) (int64, error) {
@@ -73,7 +74,11 @@ func (q *Queries) CountFood(ctx context.Context, foodID pgtype.Int8) (int64, err
 const countFoodStallLogByNodeId = `-- name: CountFoodStallLogByNodeId :one
 SELECT SUM(quantity)
 FROM food_stall_logs
-WHERE node_id = $1
+WHERE node_food_id IN (
+    SELECT id
+    FROM node_foods
+    WHERE node_id = $1
+)
 `
 
 func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int8) (int64, error) {
@@ -146,24 +151,18 @@ func (q *Queries) CreateExhibitionLog(ctx context.Context, arg CreateExhibitionL
 }
 
 const createFoodStallLog = `-- name: CreateFoodStallLog :exec
-INSERT INTO food_stall_logs (node_id, visitor_id, food_id, quantity)
-VALUES ($1, $2, $3, $4)
+INSERT INTO food_stall_logs (node_food_id, visitor_id, quantity)
+VALUES ($1, $2, $3)
 `
 
 type CreateFoodStallLogParams struct {
-	NodeID    pgtype.Int8
-	VisitorID pgtype.Int8
-	FoodID    pgtype.Int8
-	Quantity  int32
+	NodeFoodID pgtype.Int8
+	VisitorID  pgtype.Int8
+	Quantity   int32
 }
 
 func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLogParams) error {
-	_, err := q.db.Exec(ctx, createFoodStallLog,
-		arg.NodeID,
-		arg.VisitorID,
-		arg.FoodID,
-		arg.Quantity,
-	)
+	_, err := q.db.Exec(ctx, createFoodStallLog, arg.NodeFoodID, arg.VisitorID, arg.Quantity)
 	return err
 }
 
@@ -314,10 +313,62 @@ func (q *Queries) GetFoodById(ctx context.Context, id int64) (Food, error) {
 	return i, err
 }
 
+const getFoodByNodeFoodId = `-- name: GetFoodByNodeFoodId :one
+SELECT f.id, f.name, f.price, f.created_at, f.updated_at
+FROM foods f
+JOIN node_foods nf ON f.id = nf.food_id
+WHERE nf.id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetFoodByNodeFoodId(ctx context.Context, id int64) (Food, error) {
+	row := q.db.QueryRow(ctx, getFoodByNodeFoodId, id)
+	var i Food
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Price,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getFoodNodeByFoodAndNodeId = `-- name: GetFoodNodeByFoodAndNodeId :one
+SELECT nf.id, nf.node_id, nf.food_id, nf.created_at, nf.updated_at
+FROM node_foods nf
+JOIN foods f ON nf.food_id = f.id
+WHERE f.id = $1
+  AND nf.node_id = $2
+LIMIT 1
+`
+
+type GetFoodNodeByFoodAndNodeIdParams struct {
+	ID     int64
+	NodeID pgtype.Int8
+}
+
+func (q *Queries) GetFoodNodeByFoodAndNodeId(ctx context.Context, arg GetFoodNodeByFoodAndNodeIdParams) (NodeFood, error) {
+	row := q.db.QueryRow(ctx, getFoodNodeByFoodAndNodeId, arg.ID, arg.NodeID)
+	var i NodeFood
+	err := row.Scan(
+		&i.ID,
+		&i.NodeID,
+		&i.FoodID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getFoodStallLogByNodeId = `-- name: GetFoodStallLogByNodeId :many
-SELECT id, node_id, visitor_id, food_id, quantity, created_at, updated_at
+SELECT id, node_food_id, visitor_id, quantity, created_at, updated_at
 FROM food_stall_logs
-WHERE node_id = $1
+WHERE node_food_id IN (
+    SELECT id
+    FROM node_foods
+    WHERE node_id = $1
+)
 ORDER BY id DESC
 LIMIT 10
 `
@@ -333,9 +384,8 @@ func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int
 		var i FoodStallLog
 		if err := rows.Scan(
 			&i.ID,
-			&i.NodeID,
+			&i.NodeFoodID,
 			&i.VisitorID,
-			&i.FoodID,
 			&i.Quantity,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -353,12 +403,12 @@ func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID pgtype.Int
 const getFoodsByNodeId = `-- name: GetFoodsByNodeId :many
 SELECT f.id, f.name, f.price, f.created_at, f.updated_at
 FROM foods f
-JOIN nodes n ON f.id = n.food_id
-WHERE n.id = $1
+JOIN node_foods nf ON f.id = nf.food_id
+WHERE nf.node_id = $1
 `
 
-func (q *Queries) GetFoodsByNodeId(ctx context.Context, id int64) ([]Food, error) {
-	rows, err := q.db.Query(ctx, getFoodsByNodeId, id)
+func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID pgtype.Int8) ([]Food, error) {
+	rows, err := q.db.Query(ctx, getFoodsByNodeId, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +434,7 @@ func (q *Queries) GetFoodsByNodeId(ctx context.Context, id int64) ([]Food, error
 }
 
 const getNodeById = `-- name: GetNodeById :one
-SELECT id, food_id, key, name, ip, type, is_review, created_at, updated_at
+SELECT id, key, name, ip, type, is_review, created_at, updated_at
 FROM nodes
 WHERE id = $1
 LIMIT 1
@@ -395,7 +445,6 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 	var i Node
 	err := row.Scan(
 		&i.ID,
-		&i.FoodID,
 		&i.Key,
 		&i.Name,
 		&i.Ip,
@@ -408,7 +457,7 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 }
 
 const getNodeByIp = `-- name: GetNodeByIp :one
-SELECT id, food_id, key, name, ip, type, is_review, created_at, updated_at
+SELECT id, key, name, ip, type, is_review, created_at, updated_at
 FROM nodes
 WHERE ip = $1
 LIMIT 1
@@ -419,7 +468,6 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 	var i Node
 	err := row.Scan(
 		&i.ID,
-		&i.FoodID,
 		&i.Key,
 		&i.Name,
 		&i.Ip,
@@ -432,7 +480,7 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 }
 
 const getNodeByKey = `-- name: GetNodeByKey :one
-SELECT id, food_id, key, name, ip, type, is_review, created_at, updated_at
+SELECT id, key, name, ip, type, is_review, created_at, updated_at
 FROM nodes
 WHERE key = $1
 LIMIT 1
@@ -443,7 +491,6 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 	var i Node
 	err := row.Scan(
 		&i.ID,
-		&i.FoodID,
 		&i.Key,
 		&i.Name,
 		&i.Ip,
@@ -556,21 +603,33 @@ func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) er
 }
 
 const updateFoodStallLog = `-- name: UpdateFoodStallLog :exec
-UPDATE food_stall_logs
+UPDATE food_stall_logs fsl
 SET quantity = $2,
-    food_id = $3,
-    updated_at = now()
-WHERE id = $1
+    node_food_id = (
+        SELECT nf.id
+        FROM node_foods nf
+        WHERE nf.food_id = $3
+          AND nf.node_id = $4  -- Check if the node_id owns the food
+        LIMIT 1
+    ),
+    updated_at = NOW()
+WHERE fsl.id = $1
 `
 
 type UpdateFoodStallLogParams struct {
 	ID       int64
 	Quantity int32
 	FoodID   pgtype.Int8
+	NodeID   pgtype.Int8
 }
 
 func (q *Queries) UpdateFoodStallLog(ctx context.Context, arg UpdateFoodStallLogParams) error {
-	_, err := q.db.Exec(ctx, updateFoodStallLog, arg.ID, arg.Quantity, arg.FoodID)
+	_, err := q.db.Exec(ctx, updateFoodStallLog,
+		arg.ID,
+		arg.Quantity,
+		arg.FoodID,
+		arg.NodeID,
+	)
 	return err
 }
 

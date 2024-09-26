@@ -37,7 +37,7 @@ type Service interface {
 
 	PushExhibition(node sqlc.Node, visitorID int64, visitorRandom int32) error
 
-	UpdatePushNode(node sqlc.Node, id int64, foodID int64, quantity int32) error
+	UpdateFoodLog(node sqlc.Node, id int64, foodID int64, quantity int32) error
 
 	StatusNode(nodeID int64, level int32, chargingTime int32, dischargingTime int32, charging bool) error
 
@@ -313,11 +313,18 @@ func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom
 			return fmt.Errorf("food with id %d not found in map", food.ID)
 		}
 
+		nodeFoodByNodeAndFood, err := queries.GetFoodNodeByFoodAndNodeId(ctx, sqlc.GetFoodNodeByFoodAndNodeIdParams{
+			NodeID: pgtype.Int8{Int64: node.ID, Valid: true},
+			ID:     foodById,
+		})
+		if err != nil {
+			return err
+		}
+
 		err = queries.CreateFoodStallLog(ctx, sqlc.CreateFoodStallLogParams{
-			NodeID:    pgtype.Int8{Int64: node.ID, Valid: true},
-			VisitorID: pgtype.Int8{Int64: visitorById.ID, Valid: true},
-			FoodID:    pgtype.Int8{Int64: foodById, Valid: true},
-			Quantity:  int32(food.Quantity),
+			NodeFoodID: pgtype.Int8{Int64: nodeFoodByNodeAndFood.ID, Valid: true},
+			VisitorID:  pgtype.Int8{Int64: visitorById.ID, Valid: true},
+			Quantity:   int32(food.Quantity),
 		})
 		if err != nil {
 			return err
@@ -369,7 +376,7 @@ func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRando
 	return nil
 }
 
-func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, foodID int64, quantity int32) error {
+func (s *DbService) UpdateFoodLog(node sqlc.Node, id int64, foodID int64, quantity int32) error {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -385,6 +392,7 @@ func (s *DbService) UpdatePushNode(node sqlc.Node, id int64, foodID int64, quant
 		err = queries.UpdateFoodStallLog(ctx, sqlc.UpdateFoodStallLogParams{
 			ID:       id,
 			FoodID:   pgtype.Int8{Int64: foodID, Valid: true},
+			NodeID:   pgtype.Int8{Int64: node.ID, Valid: true},
 			Quantity: quantity,
 		})
 		if err != nil {
@@ -550,7 +558,12 @@ func (s *DbService) FoodstallRows(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstal
 			return nil, err
 		}
 
-		foodByID, err := queries.GetFoodById(ctx, row.FoodID.Int64)
+		foodByNodeFoodId, err := queries.GetFoodByNodeFoodId(ctx, row.NodeFoodID.Int64)
+		if err != nil {
+			return nil, err
+		}
+
+		foodByID, err := queries.GetFoodById(ctx, foodByNodeFoodId.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -645,7 +658,7 @@ func (s *DbService) Foods(node sqlc.Node) ([]NodeFood, error) {
 	}
 	queries := sqlc.New(q)
 
-	foods, err := queries.GetFoodsByNodeId(ctx, node.ID)
+	foods, err := queries.GetFoodsByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
@@ -745,7 +758,7 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 	}
 	queries := sqlc.New(q)
 
-	foods, err := queries.GetFoodsByNodeId(ctx, node.ID)
+	foods, err := queries.GetFoodsByNodeId(ctx, pgtype.Int8{Int64: node.ID, Valid: true})
 	if err != nil {
 		return nil, err
 	}

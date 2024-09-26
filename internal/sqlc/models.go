@@ -143,13 +143,12 @@ type Food struct {
 }
 
 type FoodStallLog struct {
-	ID        int64
-	NodeID    pgtype.Int8
-	VisitorID pgtype.Int8
-	FoodID    pgtype.Int8
-	Quantity  int32
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID         int64
+	NodeFoodID pgtype.Int8
+	VisitorID  pgtype.Int8
+	Quantity   int32
+	CreatedAt  pgtype.Timestamp
+	UpdatedAt  pgtype.Timestamp
 }
 
 type Model struct {
@@ -161,12 +160,19 @@ type Model struct {
 
 type Node struct {
 	ID        int64
-	FoodID    pgtype.Int8
 	Key       pgtype.Text
 	Name      string
 	Ip        *netip.Addr
 	Type      NodeType
 	IsReview  pgtype.Bool
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+type NodeFood struct {
+	ID        int64
+	NodeID    pgtype.Int8
+	FoodID    pgtype.Int8
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }
