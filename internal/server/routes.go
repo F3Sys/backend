@@ -88,7 +88,7 @@ func (s *Server) ApiRoutes() *echo.Echo {
 
 	api.POST("/node", s.NodeIpHandler)
 
-	api.POST("/vote", s.VoteHandler) // middleware.RateLimiter(limiterStore)
+	// api.POST("/vote", s.VoteHandler) // middleware.RateLimiter(limiterStore)
 
 	protected := api.Group("/protected", middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
 		node, ok, err := s.DB.Password(key)

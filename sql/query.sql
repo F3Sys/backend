@@ -164,7 +164,7 @@ SELECT SUM(fsl.quantity)
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.food_id = $1;
--- name: CountEntryLogTypeByNodeId :one
+-- name: CountEntryLogTypeByNodeIdAndType :one
 SELECT COUNT(*)
 FROM entry_logs
 WHERE node_id = $1

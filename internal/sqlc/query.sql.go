@@ -25,20 +25,20 @@ func (q *Queries) CountEntryLogByNodeId(ctx context.Context, nodeID int64) (int6
 	return count, err
 }
 
-const countEntryLogTypeByNodeId = `-- name: CountEntryLogTypeByNodeId :one
+const countEntryLogTypeByNodeIdAndType = `-- name: CountEntryLogTypeByNodeIdAndType :one
 SELECT COUNT(*)
 FROM entry_logs
 WHERE node_id = $1
     AND type = $2
 `
 
-type CountEntryLogTypeByNodeIdParams struct {
+type CountEntryLogTypeByNodeIdAndTypeParams struct {
 	NodeID int64
 	Type   EntryLogsType
 }
 
-func (q *Queries) CountEntryLogTypeByNodeId(ctx context.Context, arg CountEntryLogTypeByNodeIdParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countEntryLogTypeByNodeId, arg.NodeID, arg.Type)
+func (q *Queries) CountEntryLogTypeByNodeIdAndType(ctx context.Context, arg CountEntryLogTypeByNodeIdAndTypeParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countEntryLogTypeByNodeIdAndType, arg.NodeID, arg.Type)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

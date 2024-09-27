@@ -65,7 +65,7 @@ type Service interface {
 
 	CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerDay, error)
 
-	CountExhibitionPerHour(node sqlc.Node) ([24]ExhibitionPerHour, error)
+	CountExhibitionPerHour(node sqlc.Node) ([]ExhibitionPerDay, error)
 }
 
 type DbService struct {
@@ -772,7 +772,7 @@ func (s *DbService) CountEntryType(node sqlc.Node) ([]NodeEntryCount, error) {
 
 	var nodeEntryCounts []NodeEntryCount
 	for _, entryType := range []sqlc.EntryLogsType{sqlc.EntryLogsTypeENTERED, sqlc.EntryLogsTypeLEFT} {
-		count, err := queries.CountEntryLogTypeByNodeId(ctx, sqlc.CountEntryLogTypeByNodeIdParams{
+		count, err := queries.CountEntryLogTypeByNodeIdAndType(ctx, sqlc.CountEntryLogTypeByNodeIdAndTypeParams{
 			NodeID: node.ID,
 			Type:   entryType,
 		})
@@ -787,10 +787,10 @@ func (s *DbService) CountEntryType(node sqlc.Node) ([]NodeEntryCount, error) {
 
 type EntryPerDay struct {
 	Name   string
-	Counts [24]CountPerHour
+	Counts []EntryPerHour
 }
 
-type CountPerHour struct {
+type EntryPerHour struct {
 	Hour  int
 	Count int
 }
@@ -816,10 +816,10 @@ func (s *DbService) CountEntryPerHour(node sqlc.Node) ([]EntryPerDay, error) {
 		if err != nil {
 			return []EntryPerDay{}, err
 		}
-		var countPerHour = [24]CountPerHour{}
+		var countPerHour = make([]EntryPerHour, 24)
 
 		for _, row := range rows {
-			countPerHour[int(row.Hour)] = CountPerHour{int(row.Hour), int(row.Count)}
+			countPerHour[int(row.Hour)] = EntryPerHour{int(row.Hour), int(row.Count)}
 		}
 		countPerDay[i] = EntryPerDay{string(entryType), countPerHour}
 	}
@@ -829,7 +829,7 @@ func (s *DbService) CountEntryPerHour(node sqlc.Node) ([]EntryPerDay, error) {
 
 type FoodStallPerDay struct {
 	Name  string
-	Foods [24]FoodPerHour
+	Foods []FoodPerHour
 }
 
 type FoodPerHour struct {
@@ -861,7 +861,7 @@ func (s *DbService) CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerDay, er
 		if err != nil {
 			return []FoodStallPerDay{}, err
 		}
-		var countPerHour = [24]FoodPerHour{}
+		var countPerHour = make([]FoodPerHour, 24)
 
 		for _, row := range countPerHourByFood {
 			countPerHour[int(row.Hour)] = FoodPerHour{int(row.Hour), int(row.Count)}
@@ -872,12 +872,17 @@ func (s *DbService) CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerDay, er
 	return countPerDay, nil
 }
 
+type ExhibitionPerDay struct {
+	Name   string
+	Counts []ExhibitionPerHour
+}
+
 type ExhibitionPerHour struct {
 	Hour  int
 	Count int
 }
 
-func (s *DbService) CountExhibitionPerHour(node sqlc.Node) ([24]ExhibitionPerHour, error) {
+func (s *DbService) CountExhibitionPerHour(node sqlc.Node) ([]ExhibitionPerDay, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -885,18 +890,20 @@ func (s *DbService) CountExhibitionPerHour(node sqlc.Node) ([24]ExhibitionPerHou
 		_ = q.Rollback(ctx)
 	}(q, ctx)
 	if err != nil {
-		return [24]ExhibitionPerHour{}, err
+		return []ExhibitionPerDay{}, err
 	}
 	queries := sqlc.New(q)
 
-	var countPerHour = [24]ExhibitionPerHour{}
+	var countPerDay = make([]ExhibitionPerDay, 2)
 	rows, err := queries.CountExhibitionPerHourByNodeId(ctx, node.ID)
 	if err != nil {
-		return [24]ExhibitionPerHour{}, err
+		return []ExhibitionPerDay{}, err
 	}
+	var countPerHour = make([]ExhibitionPerHour, 24)
 	for _, row := range rows {
 		countPerHour[int(row.Hour)] = ExhibitionPerHour{int(row.Hour), int(row.Count)}
 	}
+	countPerDay[0] = ExhibitionPerDay{"Exhibition", countPerHour}
 
-	return countPerHour, nil
+	return countPerDay, nil
 }
