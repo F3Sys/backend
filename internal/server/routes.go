@@ -133,6 +133,12 @@ func (s *Server) ApiRoutes() *echo.Echo {
 
 	data.GET("/exhibition", s.NodeExhibitionPerHourCountHandler, TypeMiddleware(sqlc.NodeTypeEXHIBITION))
 
+	review := protected.Group("/review")
+
+	review.POST("/foodstall", s.NodeFoodStallReviewHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
+
+	review.POST("/exhibition", s.NodeExhibitionReviewHandler, TypeMiddleware(sqlc.NodeTypeEXHIBITION))
+
 	protected.PATCH("/status", s.NodeStatusHandler, TypeMiddleware(sqlc.NodeTypeENTRY, sqlc.NodeTypeFOODSTALL, sqlc.NodeTypeEXHIBITION))
 
 	return api
@@ -438,8 +444,9 @@ func (s *Server) NodeInfoHandler(c echo.Context) error {
 	node := c.Get("node").(sqlc.Node)
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"name": node.Name,
-		"type": node.Type,
+		"name":      node.Name,
+		"type":      node.Type,
+		"is_review": node.IsReview,
 	})
 }
 
@@ -697,4 +704,78 @@ func (s *Server) NodeExhibitionPerHourCountHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, exhibitionCount)
+}
+
+type foodStallReview struct {
+	VisitorF3SiD string `json:"f3sid"`
+	Rating       int    `json:"rating"`
+}
+
+func (s *Server) NodeFoodStallReviewHandler(c echo.Context) error {
+	var foodStallReview foodStallReview
+
+	err := c.Bind(&foodStallReview)
+	if err != nil {
+		slog.Default().Error("bind", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	node := c.Get("node").(sqlc.Node)
+
+	sqid, err := Sqids()
+	if err != nil {
+		slog.Default().Error("sqids initialization", "error", err)
+		return echo.ErrInternalServerError
+	}
+
+	foodStallReviewVisitorID := sqid.Decode(foodStallReview.VisitorF3SiD)
+	if len(foodStallReviewVisitorID) != 2 {
+		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		return echo.ErrBadRequest
+	}
+
+	err = s.DB.FoodStallReview(node, int64(foodStallReviewVisitorID[0]), int32(foodStallReviewVisitorID[1]), int32(foodStallReview.Rating))
+	if err != nil {
+		slog.Default().Error("foodstall review", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{})
+}
+
+type exhibitionReview struct {
+	VisitorF3SiD string `json:"f3sid"`
+	Rating       int    `json:"rating"`
+}
+
+func (s *Server) NodeExhibitionReviewHandler(c echo.Context) error {
+	var exhibitionReview exhibitionReview
+
+	err := c.Bind(&exhibitionReview)
+	if err != nil {
+		slog.Default().Error("bind", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	node := c.Get("node").(sqlc.Node)
+
+	sqid, err := Sqids()
+	if err != nil {
+		slog.Default().Error("sqids initialization", "error", err)
+		return echo.ErrInternalServerError
+	}
+
+	exhibitionReviewVisitorID := sqid.Decode(exhibitionReview.VisitorF3SiD)
+	if len(exhibitionReviewVisitorID) != 2 {
+		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		return echo.ErrBadRequest
+	}
+
+	err = s.DB.ExhibitionReview(node, int64(exhibitionReviewVisitorID[0]), int32(exhibitionReviewVisitorID[1]), int32(exhibitionReview.Rating))
+	if err != nil {
+		slog.Default().Error("exhibition review", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{})
 }

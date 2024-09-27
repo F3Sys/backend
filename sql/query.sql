@@ -198,3 +198,9 @@ WHERE el.node_id = $1
 GROUP BY hour
 ORDER BY hour DESC
 LIMIT 24;
+-- name: CreateFoodStallReviewLog :exec
+INSERT INTO food_stall_review_logs (node_id, visitor_id, rating)
+VALUES ($1, $2, $3);
+-- name: CreateExhibitionReviewLog :exec
+INSERT INTO exhibition_review_logs (node_id, visitor_id, rating)
+VALUES ($1, $2, $3);

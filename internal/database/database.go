@@ -66,6 +66,10 @@ type Service interface {
 	CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerDay, error)
 
 	CountExhibitionPerHour(node sqlc.Node) ([]ExhibitionPerDay, error)
+
+	FoodStallReview(node sqlc.Node, visitorID int64, visitorRandom int32, rating int32) error
+
+	ExhibitionReview(node sqlc.Node, visitorID int64, visitorRandom int32, rating int32) error
 }
 
 type DbService struct {
@@ -906,4 +910,62 @@ func (s *DbService) CountExhibitionPerHour(node sqlc.Node) ([]ExhibitionPerDay, 
 	countPerDay[0] = ExhibitionPerDay{"Exhibition", countPerHour}
 
 	return countPerDay, nil
+}
+
+func (s *DbService) FoodStallReview(node sqlc.Node, visitorID int64, visitorRandom int32, rating int32) error {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return err
+	}
+	queries := sqlc.New(q)
+
+	err = queries.CreateFoodStallReviewLog(ctx, sqlc.CreateFoodStallReviewLogParams{
+		NodeID:    node.ID,
+		VisitorID: visitorID,
+		Rating:    rating,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *DbService) ExhibitionReview(node sqlc.Node, visitorID int64, visitorRandom int32, rating int32) error {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return err
+	}
+	queries := sqlc.New(q)
+
+	err = queries.CreateExhibitionReviewLog(ctx, sqlc.CreateExhibitionReviewLogParams{
+		NodeID:    node.ID,
+		VisitorID: visitorID,
+		Rating:    rating,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
