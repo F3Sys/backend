@@ -49,7 +49,7 @@ SELECT COUNT(*) AS count,
        DATE_PART('hour', el.created_at) AS hour
 FROM entry_logs el
 WHERE el.node_id = $1 
-  AND type = $2
+  AND el.type = $2
   AND DATE(el.created_at) = CURRENT_DATE
 GROUP BY hour
 ORDER BY hour DESC

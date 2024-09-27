@@ -112,7 +112,14 @@ CREATE TABLE exhibition_review_logs (
     FOREIGN KEY (visitor_id) REFERENCES visitors(id)
 );
 -- Create indexes
-CREATE INDEX idx_nodes_key ON nodes (key);
-CREATE INDEX idx_visitors_id ON visitors (id);
-CREATE INDEX idx_visitors_id_random ON visitors (id, random);
-CREATE INDEX idx_foods_id ON foods (id);
+CREATE INDEX idx_visitors_ip ON visitors(ip);
+CREATE INDEX idx_visitors_id ON visitors(id);
+CREATE INDEX idx_visitors_id_random ON visitors(id, random);
+CREATE INDEX idx_nodes_id ON nodes(id);CREATE INDEX idx_entry_logs_node_id_type  ON entry_logs (node_id, type);
+CREATE INDEX idx_nodes_key ON nodes(key);CREATE INDEX idx_node_foods_food_id  ON node_foods (food_id);
+CREATE INDEX idx_nodes_ip ON nodes(ip);CREATE INDEX idx_food_stall_logs_node_food_id  ON food_stall_logs (node_food_id);
+CREATE INDEX idx_exhibition_logs_node_id  ON exhibition_logs (node_id);
+CREATE INDEX idx_entry_logs_node_id_type_created_at ON entry_logs (node_id, type, created_at);
+CREATE INDEX idx_food_stall_logs_node_food_id_created_at ON food_stall_logs(node_food_id, created_at);
+CREATE INDEX idx_exhibition_logs_node_id_created_at ON exhibition_logs (node_id, created_at);
+CREATE INDEX idx_node_foods_food_id ON node_foods (food_id);
