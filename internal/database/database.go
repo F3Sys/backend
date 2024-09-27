@@ -786,13 +786,13 @@ func (s *DbService) CountEntryType(node sqlc.Node) ([]NodeEntryCount, error) {
 }
 
 type EntryPerDay struct {
-	Name   string
-	Counts []EntryPerHour
+	Name   string         `json:"name"`
+	Counts []EntryPerHour `json:"counts"`
 }
 
 type EntryPerHour struct {
-	Hour  int
-	Count int
+	Hour  int `json:"hour"`
+	Count int `json:"count"`
 }
 
 func (s *DbService) CountEntryPerHour(node sqlc.Node) ([]EntryPerDay, error) {
@@ -828,13 +828,13 @@ func (s *DbService) CountEntryPerHour(node sqlc.Node) ([]EntryPerDay, error) {
 }
 
 type FoodStallPerDay struct {
-	Name  string
-	Foods []FoodPerHour
+	Name  string        `json:"name"`
+	Foods []FoodPerHour `json:"foods"`
 }
 
 type FoodPerHour struct {
-	Hour  int
-	Count int
+	Hour  int `json:"hour"`
+	Count int `json:"count"`
 }
 
 func (s *DbService) CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerDay, error) {
@@ -873,13 +873,13 @@ func (s *DbService) CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerDay, er
 }
 
 type ExhibitionPerDay struct {
-	Name   string
-	Counts []ExhibitionPerHour
+	Name   string              `json:"name"`
+	Counts []ExhibitionPerHour `json:"counts"`
 }
 
 type ExhibitionPerHour struct {
-	Hour  int
-	Count int
+	Hour  int `json:"hour"`
+	Count int `json:"count"`
 }
 
 func (s *DbService) CountExhibitionPerHour(node sqlc.Node) ([]ExhibitionPerDay, error) {
