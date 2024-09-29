@@ -54,25 +54,6 @@ func (s *Server) ApiRoutes() *echo.Echo {
 	api.IPExtractor = func(r *http.Request) string {
 		return r.Header.Get("Fly-Client-IP")
 	}
-	api.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
-		LogURI:      true,
-		LogMethod:   true,
-		LogStatus:   true,
-		LogRemoteIP: true,
-		LogLatency:  true,
-		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			slog.Info("request",
-				"URI", v.URI,
-				"method", v.Method,
-				"status", v.Status,
-				"remote_ip", v.RemoteIP,
-				"latency", v.Latency,
-			)
-
-			return nil
-		},
-	}))
-	api.Use(middleware.Recover())
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		// 	// AllowOrigins: []string{"http://localhost:4000", "https://aicj.io"},
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
@@ -154,8 +135,9 @@ func (s *Server) RegisterRoutes() *echo.Echo { // Hosts
 	//------
 
 	public := echo.New()
-	public.Use(middleware.Logger())
-	public.Use(middleware.Recover())
+	public.IPExtractor = func(r *http.Request) string {
+		return r.Header.Get("Fly-Client-IP")
+	}
 
 	hosts["aicj.io"] = &Host{public}
 
@@ -163,13 +145,18 @@ func (s *Server) RegisterRoutes() *echo.Echo { // Hosts
 		return c.String(http.StatusOK, c.Request().Header.Get("Fly-Client-IP"))
 	})
 
+	public.GET("/panic", func(c echo.Context) error {
+		panic("panic")
+	})
+
 	//---------
 	// Node Website
 	//---------
 
 	node := echo.New()
-	node.Use(middleware.Logger())
-	node.Use(middleware.Recover())
+	node.IPExtractor = func(r *http.Request) string {
+		return r.Header.Get("Fly-Client-IP")
+	}
 
 	hosts["node.aicj.io"] = &Host{node}
 
@@ -179,6 +166,30 @@ func (s *Server) RegisterRoutes() *echo.Echo { // Hosts
 
 	// Server
 	e := echo.New()
+	e.Use(middleware.Recover())
+	e.IPExtractor = func(r *http.Request) string {
+		return r.Header.Get("Fly-Client-IP")
+	}
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:      true,
+		LogMethod:   true,
+		LogStatus:   true,
+		LogRemoteIP: true,
+		LogLatency:  true,
+		LogHost:     true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			slog.Info("request",
+				"host", v.Host,
+				"URI", v.URI,
+				"method", v.Method,
+				"status", v.Status,
+				"remote_ip", v.RemoteIP,
+				"latency", v.Latency,
+			)
+
+			return nil
+		},
+	}))
 	e.Any("/*", func(c echo.Context) (err error) {
 		req := c.Request()
 		res := c.Response()
