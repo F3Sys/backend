@@ -125,15 +125,6 @@ type ExhibitionLog struct {
 	UpdatedAt pgtype.Timestamp
 }
 
-type ExhibitionReviewLog struct {
-	ID        int64
-	NodeID    int64
-	VisitorID int64
-	Rating    int32
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-}
-
 type Food struct {
 	ID        int64
 	Name      string
@@ -149,15 +140,6 @@ type FoodStallLog struct {
 	Quantity   int32
 	CreatedAt  pgtype.Timestamp
 	UpdatedAt  pgtype.Timestamp
-}
-
-type FoodStallReviewLog struct {
-	ID        int64
-	NodeID    int64
-	VisitorID int64
-	Rating    int32
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
 }
 
 type Model struct {

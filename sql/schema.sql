@@ -90,33 +90,11 @@ CREATE TABLE food_stall_logs (
     FOREIGN KEY (node_food_id) REFERENCES node_foods(id),
     FOREIGN KEY (visitor_id) REFERENCES visitors(id)
 );
--- FoodStallReviewLog table
-CREATE TABLE food_stall_review_logs (
-    id BIGSERIAL PRIMARY KEY,
-    node_id BIGINT NOT NULL,
-    visitor_id BIGINT NOT NULL,
-    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES nodes(id),
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id)
-);
 -- ExhibitionLog table
 CREATE TABLE exhibition_logs (
     id BIGSERIAL PRIMARY KEY,
     node_id BIGINT NOT NULL,
     visitor_id BIGINT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (node_id) REFERENCES nodes(id),
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id)
-);
--- ExhibitionReviewLog table
-CREATE TABLE exhibition_review_logs (
-    id BIGSERIAL PRIMARY KEY,
-    node_id BIGINT NOT NULL,
-    visitor_id BIGINT NOT NULL,
-    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (node_id) REFERENCES nodes(id),

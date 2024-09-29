@@ -265,22 +265,6 @@ func (q *Queries) CreateExhibitionLog(ctx context.Context, arg CreateExhibitionL
 	return err
 }
 
-const createExhibitionReviewLog = `-- name: CreateExhibitionReviewLog :exec
-INSERT INTO exhibition_review_logs (node_id, visitor_id, rating)
-VALUES ($1, $2, $3)
-`
-
-type CreateExhibitionReviewLogParams struct {
-	NodeID    int64
-	VisitorID int64
-	Rating    int32
-}
-
-func (q *Queries) CreateExhibitionReviewLog(ctx context.Context, arg CreateExhibitionReviewLogParams) error {
-	_, err := q.db.Exec(ctx, createExhibitionReviewLog, arg.NodeID, arg.VisitorID, arg.Rating)
-	return err
-}
-
 const createFoodStallLog = `-- name: CreateFoodStallLog :exec
 INSERT INTO food_stall_logs (node_food_id, visitor_id, quantity)
 VALUES ($1, $2, $3)
@@ -294,22 +278,6 @@ type CreateFoodStallLogParams struct {
 
 func (q *Queries) CreateFoodStallLog(ctx context.Context, arg CreateFoodStallLogParams) error {
 	_, err := q.db.Exec(ctx, createFoodStallLog, arg.NodeFoodID, arg.VisitorID, arg.Quantity)
-	return err
-}
-
-const createFoodStallReviewLog = `-- name: CreateFoodStallReviewLog :exec
-INSERT INTO food_stall_review_logs (node_id, visitor_id, rating)
-VALUES ($1, $2, $3)
-`
-
-type CreateFoodStallReviewLogParams struct {
-	NodeID    int64
-	VisitorID int64
-	Rating    int32
-}
-
-func (q *Queries) CreateFoodStallReviewLog(ctx context.Context, arg CreateFoodStallReviewLogParams) error {
-	_, err := q.db.Exec(ctx, createFoodStallReviewLog, arg.NodeID, arg.VisitorID, arg.Rating)
 	return err
 }
 
