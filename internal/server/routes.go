@@ -37,7 +37,7 @@ func TypeMiddleware(nodeTypes ...sqlc.NodeType) echo.MiddlewareFunc {
 					return next(c)
 				}
 			}
-			slog.Default().Error("node type middleware", "error", "invalid node type")
+			slog.Error("node type middleware", "error", "invalid node type")
 			return echo.ErrBadRequest
 		}
 	}
@@ -61,7 +61,7 @@ func (s *Server) ApiRoutes() *echo.Echo {
 		LogRemoteIP: true,
 		LogLatency:  true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			slog.Default().Info("request",
+			slog.Info("request",
 				"URI", v.URI,
 				"method", v.Method,
 				"status", v.Status,
@@ -206,7 +206,7 @@ func (s *Server) PingHandler(c echo.Context) error {
 	ip := c.RealIP()
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
-		slog.Default().Error("ParseAddr", "error", err)
+		slog.Error("ParseAddr", "error", err)
 		return echo.ErrInternalServerError
 	}
 	return c.String(http.StatusOK, addr.String())
@@ -217,13 +217,13 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 
 	sqid, err := Sqids()
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
+		slog.Error("sqids initialization", "error", err)
 		return echo.ErrInternalServerError
 	}
 
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
-		slog.Default().Error("ParseAddr", "error", err)
+		slog.Error("ParseAddr", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -234,7 +234,7 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 
 			visitorF3SiD, err := s.DB.CreateVisitor(addr, random, sqid)
 			if err != nil {
-				slog.Default().Error("visitor", "error", err)
+				slog.Error("visitor", "error", err)
 				return echo.ErrBadRequest
 			}
 
@@ -242,7 +242,7 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 				"f3sid": visitorF3SiD,
 			})
 		}
-		slog.Default().Error("visitor", "error", err)
+		slog.Error("visitor", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -261,25 +261,25 @@ func (s *Server) VoteHandler(c echo.Context) error {
 
 	err := c.Bind(&vote)
 	if err != nil {
-		slog.Default().Error("bind", "error", err)
+		slog.Error("bind", "error", err)
 		return echo.ErrBadRequest
 	}
 
 	sqid, err := Sqids()
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
+		slog.Error("sqids initialization", "error", err)
 		return echo.ErrInternalServerError
 	}
 
 	voteVisitorID := sqid.Decode(vote.VisitorF3SiD)
 	if len(voteVisitorID) != 2 {
-		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		slog.Error("sqids decode", "error", "invalid sqids")
 		return echo.ErrBadRequest
 	}
 
 	err = s.DB.Vote(int64(vote.ModelID), int64(voteVisitorID[0]), int32(voteVisitorID[1]))
 	if err != nil {
-		slog.Default().Error("vote", "error", err)
+		slog.Error("vote", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -295,19 +295,19 @@ func (s *Server) NodePushEntryHandler(c echo.Context) error {
 
 	err := c.Bind(&push)
 	if err != nil {
-		slog.Default().Error("bind", "error", err)
+		slog.Error("bind", "error", err)
 		return echo.ErrBadRequest
 	}
 
 	sqid, err := Sqids()
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
+		slog.Error("sqids initialization", "error", err)
 		return echo.ErrInternalServerError
 	}
 
 	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
 	if len(pushVisitorID) != 2 {
-		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		slog.Error("sqids decode", "error", "invalid sqids")
 		return echo.ErrBadRequest
 	}
 
@@ -315,7 +315,7 @@ func (s *Server) NodePushEntryHandler(c echo.Context) error {
 
 	err = s.DB.PushEntry(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
 	if err != nil {
-		slog.Default().Error("push entry", "error", err)
+		slog.Error("push entry", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -337,26 +337,26 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 
 	err := c.Bind(&push)
 	if err != nil {
-		slog.Default().Error("bind", "error", err)
+		slog.Error("bind", "error", err)
 		return echo.ErrBadRequest
 	}
 
 	sqid, err := Sqids()
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
+		slog.Error("sqids initialization", "error", err)
 		return echo.ErrInternalServerError
 	}
 
 	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
 	if len(pushVisitorID) != 2 {
-		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		slog.Error("sqids decode", "error", "invalid sqids")
 		return echo.ErrBadRequest
 	}
 
 	node := c.Get("node").(sqlc.Node)
 
 	if len(push.Foods) == 0 {
-		slog.Default().Error("foods", "error", "no foods")
+		slog.Error("foods", "error", "no foods")
 		return echo.ErrBadRequest
 	}
 
@@ -371,7 +371,7 @@ func (s *Server) NodePushFoodStallHandler(c echo.Context) error {
 
 	err = s.DB.PushFoodStall(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]), foods)
 	if err != nil {
-		slog.Default().Error("push foodstall", "error", err)
+		slog.Error("push foodstall", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -387,19 +387,19 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 
 	err := c.Bind(&push)
 	if err != nil {
-		slog.Default().Error("bind", "error", err)
+		slog.Error("bind", "error", err)
 		return echo.ErrBadRequest
 	}
 
 	sqid, err := Sqids()
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
+		slog.Error("sqids initialization", "error", err)
 		return echo.ErrInternalServerError
 	}
 
 	pushVisitorID := sqid.Decode(push.VisitorF3SiD)
 	if len(pushVisitorID) != 2 {
-		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		slog.Error("sqids decode", "error", "invalid sqids")
 		return echo.ErrBadRequest
 	}
 
@@ -407,7 +407,7 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 
 	err = s.DB.PushExhibition(node, int64(pushVisitorID[0]), int32(pushVisitorID[1]))
 	if err != nil {
-		slog.Default().Error("push exhibition", "error", err)
+		slog.Error("push exhibition", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -425,7 +425,7 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 	var status status
 	err := c.Bind(&status)
 	if err != nil {
-		slog.Default().Error("bind", "error", err)
+		slog.Error("bind", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -433,7 +433,7 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 
 	err = s.DB.StatusNode(node.ID, int32(status.Level), int32(status.ChargingTime), int32(status.DischargingTime), status.Charging)
 	if err != nil {
-		slog.Default().Error("status", "error", err)
+		slog.Error("status", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -455,7 +455,7 @@ func (s *Server) NodeFoodsHandler(c echo.Context) error {
 
 	foods, err := s.DB.Foods(node)
 	if err != nil {
-		slog.Default().Error("foods", "error", err)
+		slog.Error("foods", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -480,25 +480,25 @@ func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
 
 	err := c.Bind(&visitorLookup)
 	if err != nil {
-		slog.Default().Error("bind", "error", err)
+		slog.Error("bind", "error", err)
 		return echo.ErrBadRequest
 	}
 
 	sqid, err := Sqids()
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
+		slog.Error("sqids initialization", "error", err)
 		return echo.ErrInternalServerError
 	}
 
 	visitorLookupVisitorID := sqid.Decode(visitorLookup.visitorF3SiD)
 	if len(visitorLookupVisitorID) != 2 {
-		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		slog.Error("sqids decode", "error", "invalid sqids")
 		return echo.ErrBadRequest
 	}
 
 	isFirst, err := s.DB.IsVisitorFirst(int64(visitorLookupVisitorID[0]))
 	if err != nil {
-		slog.Default().Error("is visitor first", "error", err)
+		slog.Error("is visitor first", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -512,7 +512,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 
 	sqid, err := Sqids()
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
+		slog.Error("sqids initialization", "error", err)
 		return echo.ErrInternalServerError
 	}
 
@@ -520,7 +520,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 	case sqlc.NodeTypeENTRY:
 		entryRow, err := s.DB.EntryRows(node, sqid)
 		if err != nil {
-			slog.Default().Error("entry row", "error", err)
+			slog.Error("entry row", "error", err)
 			return echo.ErrBadRequest
 		}
 
@@ -528,7 +528,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 	case sqlc.NodeTypeFOODSTALL:
 		foodstallRawLog, err := s.DB.FoodstallRows(node, sqid)
 		if err != nil {
-			slog.Default().Error("foodstall row", "error", err)
+			slog.Error("foodstall row", "error", err)
 			return echo.ErrBadRequest
 		}
 
@@ -537,7 +537,7 @@ func (s *Server) NodeTableHandler(c echo.Context) error {
 	case sqlc.NodeTypeEXHIBITION:
 		exhibitionRowLog, err := s.DB.ExhibitionRows(node, sqid)
 		if err != nil {
-			slog.Default().Error("exhibition row", "error", err)
+			slog.Error("exhibition row", "error", err)
 			return echo.ErrBadRequest
 		}
 
@@ -558,7 +558,7 @@ func (s *Server) NodeUpdateFoodStallHandler(c echo.Context) error {
 
 	err := c.Bind(&push)
 	if err != nil {
-		slog.Default().Error("bind", "error", err)
+		slog.Error("bind", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -566,7 +566,7 @@ func (s *Server) NodeUpdateFoodStallHandler(c echo.Context) error {
 
 	err = s.DB.UpdateFoodLog(node, int64(push.ID), int64(push.FoodID), int32(push.Quantity))
 	if err != nil {
-		slog.Default().Error("update push", "error", err)
+		slog.Error("update push", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -576,18 +576,18 @@ func (s *Server) NodeUpdateFoodStallHandler(c echo.Context) error {
 func (s *Server) NodeIpHandler(c echo.Context) error {
 	ip := c.RealIP()
 
-	slog.Default().Info("turi")
-	slog.Default().Info("ip", "ip", ip)
+	slog.Info("turi")
+	slog.Info("ip", "ip", ip)
 
 	addr, err := netip.ParseAddr(ip)
 	if err != nil {
-		slog.Default().Error("ParseAddr", "error", err)
+		slog.Error("ParseAddr", "error", err)
 		return echo.ErrInternalServerError
 	}
 
 	node, err := s.DB.IpNode(addr)
 	if err != nil {
-		slog.Default().Error("ip node", "error", err)
+		slog.Error("ip node", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -603,7 +603,7 @@ func (s *Server) NodeCountHandler(c echo.Context) error {
 	case sqlc.NodeTypeENTRY:
 		count, err := s.DB.CountEntry(node)
 		if err != nil {
-			slog.Default().Error("entry row", "error", err)
+			slog.Error("entry row", "error", err)
 			return echo.ErrBadRequest
 		}
 
@@ -611,7 +611,7 @@ func (s *Server) NodeCountHandler(c echo.Context) error {
 	case sqlc.NodeTypeFOODSTALL:
 		count, err := s.DB.CountFoodStall(node)
 		if err != nil {
-			slog.Default().Error("foodstall row", "error", err)
+			slog.Error("foodstall row", "error", err)
 			return echo.ErrBadRequest
 		}
 
@@ -619,7 +619,7 @@ func (s *Server) NodeCountHandler(c echo.Context) error {
 	case sqlc.NodeTypeEXHIBITION:
 		count, err := s.DB.CountExhibition(node)
 		if err != nil {
-			slog.Default().Error("exhibition row", "error", err)
+			slog.Error("exhibition row", "error", err)
 			return echo.ErrBadRequest
 		}
 
@@ -634,7 +634,7 @@ func (s *Server) NodeFoodCountHandler(c echo.Context) error {
 
 	foodCount, err := s.DB.CountFood(node)
 	if err != nil {
-		slog.Default().Error("foodstall row", "error", err)
+		slog.Error("foodstall row", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -655,7 +655,7 @@ func (s *Server) NodeEntryTypeCountHandler(c echo.Context) error {
 
 	exhibitionCount, err := s.DB.CountEntryType(node)
 	if err != nil {
-		slog.Default().Error("exhibition row", "error", err)
+		slog.Error("exhibition row", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -675,7 +675,7 @@ func (s *Server) NodeEntryPerHourCountHandler(c echo.Context) error {
 
 	exhibitionCount, err := s.DB.CountEntryPerHour(node)
 	if err != nil {
-		slog.Default().Error("exhibition row", "error", err)
+		slog.Error("exhibition row", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -687,7 +687,7 @@ func (s *Server) NodeFoodStallPerHourCountHandler(c echo.Context) error {
 
 	exhibitionCount, err := s.DB.CountFoodStallPerHour(node)
 	if err != nil {
-		slog.Default().Error("exhibition row", "error", err)
+		slog.Error("exhibition row", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -699,7 +699,7 @@ func (s *Server) NodeExhibitionPerHourCountHandler(c echo.Context) error {
 
 	exhibitionCount, err := s.DB.CountExhibitionPerHour(node)
 	if err != nil {
-		slog.Default().Error("exhibition row", "error", err)
+		slog.Error("exhibition row", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -716,7 +716,7 @@ func (s *Server) NodeFoodStallReviewHandler(c echo.Context) error {
 
 	err := c.Bind(&foodStallReview)
 	if err != nil {
-		slog.Default().Error("bind", "error", err)
+		slog.Error("bind", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -724,19 +724,19 @@ func (s *Server) NodeFoodStallReviewHandler(c echo.Context) error {
 
 	sqid, err := Sqids()
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
+		slog.Error("sqids initialization", "error", err)
 		return echo.ErrInternalServerError
 	}
 
 	foodStallReviewVisitorID := sqid.Decode(foodStallReview.VisitorF3SiD)
 	if len(foodStallReviewVisitorID) != 2 {
-		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		slog.Error("sqids decode", "error", "invalid sqids")
 		return echo.ErrBadRequest
 	}
 
 	err = s.DB.FoodStallReview(node, int64(foodStallReviewVisitorID[0]), int32(foodStallReviewVisitorID[1]), int32(foodStallReview.Rating))
 	if err != nil {
-		slog.Default().Error("foodstall review", "error", err)
+		slog.Error("foodstall review", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -753,7 +753,7 @@ func (s *Server) NodeExhibitionReviewHandler(c echo.Context) error {
 
 	err := c.Bind(&exhibitionReview)
 	if err != nil {
-		slog.Default().Error("bind", "error", err)
+		slog.Error("bind", "error", err)
 		return echo.ErrBadRequest
 	}
 
@@ -761,19 +761,19 @@ func (s *Server) NodeExhibitionReviewHandler(c echo.Context) error {
 
 	sqid, err := Sqids()
 	if err != nil {
-		slog.Default().Error("sqids initialization", "error", err)
+		slog.Error("sqids initialization", "error", err)
 		return echo.ErrInternalServerError
 	}
 
 	exhibitionReviewVisitorID := sqid.Decode(exhibitionReview.VisitorF3SiD)
 	if len(exhibitionReviewVisitorID) != 2 {
-		slog.Default().Error("sqids decode", "error", "invalid sqids")
+		slog.Error("sqids decode", "error", "invalid sqids")
 		return echo.ErrBadRequest
 	}
 
 	err = s.DB.ExhibitionReview(node, int64(exhibitionReviewVisitorID[0]), int32(exhibitionReviewVisitorID[1]), int32(exhibitionReview.Rating))
 	if err != nil {
-		slog.Default().Error("exhibition review", "error", err)
+		slog.Error("exhibition review", "error", err)
 		return echo.ErrBadRequest
 	}
 

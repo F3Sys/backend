@@ -88,13 +88,13 @@ func New() Service {
 
 	dbpool, err := pgxpool.New(context.Background(), databaseURL)
 	if err != nil {
-		slog.Default().Error("failed to create connection pool", "error", err)
+		slog.Error("failed to create connection pool", "error", err)
 		os.Exit(1)
 	}
 	// defer dbpool.Close()
 
 	if dbpool.Ping(context.Background()) != nil {
-		slog.Default().Error("failed to ping db", "error", err)
+		slog.Error("failed to ping db", "error", err)
 		os.Exit(1)
 	}
 

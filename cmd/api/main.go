@@ -7,11 +7,13 @@ import (
 )
 
 func main() {
+	slog.SetDefault(slog.Default())
+
 	newServer := server.NewServer()
 
 	err := newServer.ListenAndServe()
 	if err != nil {
-		slog.Default().Error("cannot start newServer", "erro", err)
+		slog.Error("cannot start newServer", "erro", err)
 		os.Exit(1)
 	}
 }
