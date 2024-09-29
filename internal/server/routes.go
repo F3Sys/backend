@@ -438,9 +438,8 @@ func (s *Server) NodeInfoHandler(c echo.Context) error {
 	node := c.Get("node").(sqlc.Node)
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"name":      node.Name,
-		"type":      node.Type,
-		"is_review": node.IsReview,
+		"name": node.Name,
+		"type": node.Type,
 	})
 }
 

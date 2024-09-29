@@ -155,7 +155,6 @@ type Node struct {
 	Name      string
 	Ip        *netip.Addr
 	Type      NodeType
-	IsReview  pgtype.Bool
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }

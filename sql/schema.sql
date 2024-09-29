@@ -6,7 +6,6 @@ CREATE TABLE nodes (
     name TEXT NOT NULL,
     ip INET UNIQUE,
     type node_type NOT NULL,
-    is_review BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

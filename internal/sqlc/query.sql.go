@@ -578,7 +578,7 @@ func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID int64) ([]Food, e
 }
 
 const getNodeById = `-- name: GetNodeById :one
-SELECT id, key, name, ip, type, is_review, created_at, updated_at
+SELECT id, key, name, ip, type, created_at, updated_at
 FROM nodes
 WHERE id = $1
 LIMIT 1
@@ -593,7 +593,6 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 		&i.Name,
 		&i.Ip,
 		&i.Type,
-		&i.IsReview,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -601,7 +600,7 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 }
 
 const getNodeByIp = `-- name: GetNodeByIp :one
-SELECT id, key, name, ip, type, is_review, created_at, updated_at
+SELECT id, key, name, ip, type, created_at, updated_at
 FROM nodes
 WHERE ip = $1
 LIMIT 1
@@ -616,7 +615,6 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 		&i.Name,
 		&i.Ip,
 		&i.Type,
-		&i.IsReview,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -624,7 +622,7 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 }
 
 const getNodeByKey = `-- name: GetNodeByKey :one
-SELECT id, key, name, ip, type, is_review, created_at, updated_at
+SELECT id, key, name, ip, type, created_at, updated_at
 FROM nodes
 WHERE key = $1
 LIMIT 1
@@ -639,7 +637,6 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 		&i.Name,
 		&i.Ip,
 		&i.Type,
-		&i.IsReview,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
