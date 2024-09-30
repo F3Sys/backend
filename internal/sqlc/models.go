@@ -179,7 +179,7 @@ type Student struct {
 type Visitor struct {
 	ID        int64
 	ModelID   pgtype.Int8
-	Ip        netip.Addr
+	Ip        *netip.Addr
 	Random    int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp

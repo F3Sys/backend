@@ -317,7 +317,7 @@ RETURNING id, model_id, ip, random, created_at, updated_at
 `
 
 type CreateVisitorParams struct {
-	Ip     netip.Addr
+	Ip     *netip.Addr
 	Random int32
 }
 
@@ -698,7 +698,7 @@ WHERE ip = $1
 LIMIT 1
 `
 
-func (q *Queries) GetVisitorByIp(ctx context.Context, ip netip.Addr) (Visitor, error) {
+func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, error) {
 	row := q.db.QueryRow(ctx, getVisitorByIp, ip)
 	var i Visitor
 	err := row.Scan(

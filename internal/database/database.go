@@ -164,7 +164,7 @@ func (s *DbService) GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 	}
 	queries := sqlc.New(q)
 
-	visitorByIp, err := queries.GetVisitorByIp(ctx, ip)
+	visitorByIp, err := queries.GetVisitorByIp(ctx, &ip)
 	if err != nil {
 		return "", err
 	}
@@ -191,7 +191,7 @@ func (s *DbService) CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) 
 
 	// Create a new visitor
 	visitorByIp, err := queries.CreateVisitor(ctx, sqlc.CreateVisitorParams{
-		Ip:     ip,
+		Ip:     &ip,
 		Random: rand,
 	})
 	if err != nil {
