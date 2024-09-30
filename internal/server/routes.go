@@ -235,7 +235,7 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 	visitorF3SiD, err := s.DB.GetVisitor(addr, sqid)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			random := rand.Int32N(9999)
+			random := rand.Int32N(99)
 
 			visitorF3SiD, err := s.DB.CreateVisitor(addr, random, sqid)
 			if err != nil {
