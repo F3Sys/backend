@@ -466,9 +466,10 @@ func (s *Server) NodeFoodsHandler(c echo.Context) error {
 	foodsArray := make([]map[string]interface{}, len(foods))
 	for i, food := range foods {
 		foodsArray[i] = map[string]interface{}{
-			"id":    food.ID,
-			"name":  food.Name,
-			"price": food.Price,
+			"id":       food.ID,
+			"name":     food.Name,
+			"price":    food.Price,
+			"quantity": food.Quantity,
 		}
 	}
 
@@ -645,9 +646,10 @@ func (s *Server) NodeFoodCountHandler(c echo.Context) error {
 	foodsArray := make([]map[string]interface{}, len(foodCount))
 	for i, food := range foodCount {
 		foodsArray[i] = map[string]interface{}{
-			"id":    food.ID,
-			"name":  food.Name,
-			"count": food.Count,
+			"id":       food.ID,
+			"name":     food.Name,
+			"count":    food.Count,
+			"quantity": food.Quantity,
 		}
 	}
 

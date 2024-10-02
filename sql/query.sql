@@ -169,32 +169,49 @@ SELECT COUNT(*)
 FROM entry_logs
 WHERE node_id = $1
     AND type = $2;
--- name: CountEntryPerHourByNodeId :many
+-- name: CountEntryPerHalfHourByNodeId :many
 SELECT COUNT(*) AS count,
-       DATE_PART('hour', el.created_at) AS hour
+  DATE_PART('hour', el.created_at) AS hour,
+  FLOOR(DATE_PART('minute', el.created_at) / 30) * 30 AS minute
 FROM entry_logs el
 WHERE el.node_id = $1 
   AND el.type = $2
   AND DATE(el.created_at) = CURRENT_DATE
+  AND DATE_PART('hour', el.created_at) BETWEEN 8 AND 18
 GROUP BY hour
 ORDER BY hour DESC
 LIMIT 24;
--- name: CountFoodStallPerHourByFoodId :many
+-- name: CountFoodStallPerHalfHourByFoodId :many
 SELECT SUM(fsl.quantity) AS count,
-       DATE_PART('hour', fsl.created_at) AS hour
+  DATE_PART('hour', fsl.created_at) AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at) / 30) * 30 AS minute
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
+WHERE nf.food_id = $1
+  AND DATE(fsl.created_at) = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at) BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour, minute
+LIMIT 24;
+-- name: CountFoodStallQuantityPerHourByFoodId :many
+SELECT SUM(fsl.quantity * f.quantity) AS count,
+  DATE_PART('hour', fsl.created_at) AS hour
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+JOIN foods f ON nf.food_id = f.id
 WHERE nf.food_id = $1
   AND DATE(fsl.created_at) = CURRENT_DATE
 GROUP BY hour
 ORDER BY hour
 LIMIT 24;
--- name: CountExhibitionPerHourByNodeId :many
+-- name: CountExhibitionPerHalfHourByNodeId :many
 SELECT COUNT(*) AS count,
-       DATE_PART('hour', el.created_at) AS hour
+  DATE_PART('hour', el.created_at) AS hour,
+  FLOOR(DATE_PART('minute', el.created_at) / 30) * 30 AS minute
 FROM exhibition_logs el
 WHERE el.node_id = $1
   AND DATE(el.created_at) = CURRENT_DATE
+  AND DATE_PART('hour', el.created_at) BETWEEN 8 AND 18
 GROUP BY hour
 ORDER BY hour DESC
 LIMIT 24;

@@ -129,6 +129,7 @@ type Food struct {
 	ID        int64
 	Name      string
 	Price     int32
+	Quantity  int32
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }

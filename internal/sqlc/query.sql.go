@@ -44,38 +44,41 @@ func (q *Queries) CountEntryLogTypeByNodeIdAndType(ctx context.Context, arg Coun
 	return count, err
 }
 
-const countEntryPerHourByNodeId = `-- name: CountEntryPerHourByNodeId :many
+const countEntryPerHalfHourByNodeId = `-- name: CountEntryPerHalfHourByNodeId :many
 SELECT COUNT(*) AS count,
-       DATE_PART('hour', el.created_at) AS hour
+  DATE_PART('hour', el.created_at) AS hour,
+  FLOOR(DATE_PART('minute', el.created_at) / 30) * 30 AS minute
 FROM entry_logs el
 WHERE el.node_id = $1 
   AND el.type = $2
   AND DATE(el.created_at) = CURRENT_DATE
+  AND DATE_PART('hour', el.created_at) BETWEEN 8 AND 18
 GROUP BY hour
 ORDER BY hour DESC
 LIMIT 24
 `
 
-type CountEntryPerHourByNodeIdParams struct {
+type CountEntryPerHalfHourByNodeIdParams struct {
 	NodeID int64
 	Type   EntryLogsType
 }
 
-type CountEntryPerHourByNodeIdRow struct {
-	Count int64
-	Hour  float64
+type CountEntryPerHalfHourByNodeIdRow struct {
+	Count  int64
+	Hour   float64
+	Minute int32
 }
 
-func (q *Queries) CountEntryPerHourByNodeId(ctx context.Context, arg CountEntryPerHourByNodeIdParams) ([]CountEntryPerHourByNodeIdRow, error) {
-	rows, err := q.db.Query(ctx, countEntryPerHourByNodeId, arg.NodeID, arg.Type)
+func (q *Queries) CountEntryPerHalfHourByNodeId(ctx context.Context, arg CountEntryPerHalfHourByNodeIdParams) ([]CountEntryPerHalfHourByNodeIdRow, error) {
+	rows, err := q.db.Query(ctx, countEntryPerHalfHourByNodeId, arg.NodeID, arg.Type)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CountEntryPerHourByNodeIdRow
+	var items []CountEntryPerHalfHourByNodeIdRow
 	for rows.Next() {
-		var i CountEntryPerHourByNodeIdRow
-		if err := rows.Scan(&i.Count, &i.Hour); err != nil {
+		var i CountEntryPerHalfHourByNodeIdRow
+		if err := rows.Scan(&i.Count, &i.Hour, &i.Minute); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -99,32 +102,35 @@ func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID int64) 
 	return count, err
 }
 
-const countExhibitionPerHourByNodeId = `-- name: CountExhibitionPerHourByNodeId :many
+const countExhibitionPerHalfHourByNodeId = `-- name: CountExhibitionPerHalfHourByNodeId :many
 SELECT COUNT(*) AS count,
-       DATE_PART('hour', el.created_at) AS hour
+  DATE_PART('hour', el.created_at) AS hour,
+  FLOOR(DATE_PART('minute', el.created_at) / 30) * 30 AS minute
 FROM exhibition_logs el
 WHERE el.node_id = $1
   AND DATE(el.created_at) = CURRENT_DATE
+  AND DATE_PART('hour', el.created_at) BETWEEN 8 AND 18
 GROUP BY hour
 ORDER BY hour DESC
 LIMIT 24
 `
 
-type CountExhibitionPerHourByNodeIdRow struct {
-	Count int64
-	Hour  float64
+type CountExhibitionPerHalfHourByNodeIdRow struct {
+	Count  int64
+	Hour   float64
+	Minute int32
 }
 
-func (q *Queries) CountExhibitionPerHourByNodeId(ctx context.Context, nodeID int64) ([]CountExhibitionPerHourByNodeIdRow, error) {
-	rows, err := q.db.Query(ctx, countExhibitionPerHourByNodeId, nodeID)
+func (q *Queries) CountExhibitionPerHalfHourByNodeId(ctx context.Context, nodeID int64) ([]CountExhibitionPerHalfHourByNodeIdRow, error) {
+	rows, err := q.db.Query(ctx, countExhibitionPerHalfHourByNodeId, nodeID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CountExhibitionPerHourByNodeIdRow
+	var items []CountExhibitionPerHalfHourByNodeIdRow
 	for rows.Next() {
-		var i CountExhibitionPerHourByNodeIdRow
-		if err := rows.Scan(&i.Count, &i.Hour); err != nil {
+		var i CountExhibitionPerHalfHourByNodeIdRow
+		if err := rows.Scan(&i.Count, &i.Hour, &i.Minute); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -166,11 +172,52 @@ func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID int64) (
 	return sum, err
 }
 
-const countFoodStallPerHourByFoodId = `-- name: CountFoodStallPerHourByFoodId :many
+const countFoodStallPerHalfHourByFoodId = `-- name: CountFoodStallPerHalfHourByFoodId :many
 SELECT SUM(fsl.quantity) AS count,
-       DATE_PART('hour', fsl.created_at) AS hour
+  DATE_PART('hour', fsl.created_at) AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at) / 30) * 30 AS minute
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
+WHERE nf.food_id = $1
+  AND DATE(fsl.created_at) = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at) BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour, minute
+LIMIT 24
+`
+
+type CountFoodStallPerHalfHourByFoodIdRow struct {
+	Count  int64
+	Hour   float64
+	Minute int32
+}
+
+func (q *Queries) CountFoodStallPerHalfHourByFoodId(ctx context.Context, foodID int64) ([]CountFoodStallPerHalfHourByFoodIdRow, error) {
+	rows, err := q.db.Query(ctx, countFoodStallPerHalfHourByFoodId, foodID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountFoodStallPerHalfHourByFoodIdRow
+	for rows.Next() {
+		var i CountFoodStallPerHalfHourByFoodIdRow
+		if err := rows.Scan(&i.Count, &i.Hour, &i.Minute); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countFoodStallQuantityPerHourByFoodId = `-- name: CountFoodStallQuantityPerHourByFoodId :many
+SELECT SUM(fsl.quantity * f.quantity) AS count,
+  DATE_PART('hour', fsl.created_at) AS hour
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+JOIN foods f ON nf.food_id = f.id
 WHERE nf.food_id = $1
   AND DATE(fsl.created_at) = CURRENT_DATE
 GROUP BY hour
@@ -178,20 +225,20 @@ ORDER BY hour
 LIMIT 24
 `
 
-type CountFoodStallPerHourByFoodIdRow struct {
+type CountFoodStallQuantityPerHourByFoodIdRow struct {
 	Count int64
 	Hour  float64
 }
 
-func (q *Queries) CountFoodStallPerHourByFoodId(ctx context.Context, foodID int64) ([]CountFoodStallPerHourByFoodIdRow, error) {
-	rows, err := q.db.Query(ctx, countFoodStallPerHourByFoodId, foodID)
+func (q *Queries) CountFoodStallQuantityPerHourByFoodId(ctx context.Context, foodID int64) ([]CountFoodStallQuantityPerHourByFoodIdRow, error) {
+	rows, err := q.db.Query(ctx, countFoodStallQuantityPerHourByFoodId, foodID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CountFoodStallPerHourByFoodIdRow
+	var items []CountFoodStallQuantityPerHourByFoodIdRow
 	for rows.Next() {
-		var i CountFoodStallPerHourByFoodIdRow
+		var i CountFoodStallQuantityPerHourByFoodIdRow
 		if err := rows.Scan(&i.Count, &i.Hour); err != nil {
 			return nil, err
 		}
@@ -438,7 +485,7 @@ func (q *Queries) GetExhibitionLogByNodeId(ctx context.Context, nodeID int64) ([
 }
 
 const getFoodById = `-- name: GetFoodById :one
-SELECT id, name, price, created_at, updated_at
+SELECT id, name, price, quantity, created_at, updated_at
 FROM foods
 WHERE id = $1
 LIMIT 1
@@ -451,6 +498,7 @@ func (q *Queries) GetFoodById(ctx context.Context, id int64) (Food, error) {
 		&i.ID,
 		&i.Name,
 		&i.Price,
+		&i.Quantity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -458,7 +506,7 @@ func (q *Queries) GetFoodById(ctx context.Context, id int64) (Food, error) {
 }
 
 const getFoodByNodeFoodId = `-- name: GetFoodByNodeFoodId :one
-SELECT f.id, f.name, f.price, f.created_at, f.updated_at
+SELECT f.id, f.name, f.price, f.quantity, f.created_at, f.updated_at
 FROM foods f
 JOIN node_foods nf ON f.id = nf.food_id
 WHERE nf.id = $1
@@ -472,6 +520,7 @@ func (q *Queries) GetFoodByNodeFoodId(ctx context.Context, id int64) (Food, erro
 		&i.ID,
 		&i.Name,
 		&i.Price,
+		&i.Quantity,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -545,7 +594,7 @@ func (q *Queries) GetFoodStallLogByNodeId(ctx context.Context, nodeID int64) ([]
 }
 
 const getFoodsByNodeId = `-- name: GetFoodsByNodeId :many
-SELECT f.id, f.name, f.price, f.created_at, f.updated_at
+SELECT f.id, f.name, f.price, f.quantity, f.created_at, f.updated_at
 FROM foods f
 JOIN node_foods nf ON f.id = nf.food_id
 WHERE nf.node_id = $1
@@ -564,6 +613,7 @@ func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID int64) ([]Food, e
 			&i.ID,
 			&i.Name,
 			&i.Price,
+			&i.Quantity,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
