@@ -82,6 +82,10 @@ func New() Service {
 		return dbInstance
 	}
 
+	// dbconfig, err := pgxpool.ParseConfig(databaseURL)
+	// if err != nil {
+	// 	// handle error
+	// }
 	dbpool, err := pgxpool.New(context.Background(), databaseURL)
 	if err != nil {
 		slog.Error("failed to create connection pool", "error", err)

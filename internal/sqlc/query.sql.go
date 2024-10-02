@@ -46,15 +46,15 @@ func (q *Queries) CountEntryLogTypeByNodeIdAndType(ctx context.Context, arg Coun
 
 const countEntryPerHalfHourByNodeId = `-- name: CountEntryPerHalfHourByNodeId :many
 SELECT COUNT(*) AS count,
-  DATE_PART('hour', el.created_at) AS hour,
-  FLOOR(DATE_PART('minute', el.created_at) / 30) * 30 AS minute
+  DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') AS hour,
+  FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
 FROM entry_logs el
 WHERE el.node_id = $1 
   AND el.type = $2
-  AND DATE(el.created_at) = CURRENT_DATE
-  AND DATE_PART('hour', el.created_at) BETWEEN 8 AND 18
-GROUP BY hour
-ORDER BY hour DESC
+  AND DATE(el.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
+  AND DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour DESC, minute DESC
 LIMIT 24
 `
 
@@ -104,14 +104,14 @@ func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID int64) 
 
 const countExhibitionPerHalfHourByNodeId = `-- name: CountExhibitionPerHalfHourByNodeId :many
 SELECT COUNT(*) AS count,
-  DATE_PART('hour', el.created_at) AS hour,
-  FLOOR(DATE_PART('minute', el.created_at) / 30) * 30 AS minute
+  DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') AS hour,
+  FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
 FROM exhibition_logs el
 WHERE el.node_id = $1
-  AND DATE(el.created_at) = CURRENT_DATE
-  AND DATE_PART('hour', el.created_at) BETWEEN 8 AND 18
-GROUP BY hour
-ORDER BY hour DESC
+  AND DATE(el.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
+  AND DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour DESC, minute DESC
 LIMIT 24
 `
 
@@ -174,15 +174,15 @@ func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID int64) (
 
 const countFoodStallPerHalfHourByFoodId = `-- name: CountFoodStallPerHalfHourByFoodId :many
 SELECT SUM(fsl.quantity) AS count,
-  DATE_PART('hour', fsl.created_at) AS hour,
-  FLOOR(DATE_PART('minute', fsl.created_at) / 30) * 30 AS minute
+  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.food_id = $1
-  AND DATE(fsl.created_at) = CURRENT_DATE
-  AND DATE_PART('hour', fsl.created_at) BETWEEN 8 AND 18
+  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
 GROUP BY hour, minute
-ORDER BY hour, minute
+ORDER BY hour DESC, minute DESC
 LIMIT 24
 `
 
@@ -760,6 +760,15 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const setTimezoneJST = `-- name: SetTimezoneJST :exec
+SET TIME ZONE '9'
+`
+
+func (q *Queries) SetTimezoneJST(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, setTimezoneJST)
+	return err
 }
 
 const updateBattery = `-- name: UpdateBattery :exec
