@@ -12,72 +12,58 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const countEntryLogByNodeId = `-- name: CountEntryLogByNodeId :one
+const countEntryLog = `-- name: CountEntryLog :one
 SELECT COUNT(*)
 FROM entry_logs
-WHERE node_id = $1
 `
 
-func (q *Queries) CountEntryLogByNodeId(ctx context.Context, nodeID int64) (int64, error) {
-	row := q.db.QueryRow(ctx, countEntryLogByNodeId, nodeID)
+func (q *Queries) CountEntryLog(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countEntryLog)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countEntryLogTypeByNodeIdAndType = `-- name: CountEntryLogTypeByNodeIdAndType :one
+const countEntryLogTypeByType = `-- name: CountEntryLogTypeByType :one
 SELECT COUNT(*)
 FROM entry_logs
-WHERE node_id = $1
-    AND type = $2
+WHERE type = $1
 `
 
-type CountEntryLogTypeByNodeIdAndTypeParams struct {
-	NodeID int64
-	Type   EntryLogsType
-}
-
-func (q *Queries) CountEntryLogTypeByNodeIdAndType(ctx context.Context, arg CountEntryLogTypeByNodeIdAndTypeParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countEntryLogTypeByNodeIdAndType, arg.NodeID, arg.Type)
+func (q *Queries) CountEntryLogTypeByType(ctx context.Context, type_ EntryLogsType) (int64, error) {
+	row := q.db.QueryRow(ctx, countEntryLogTypeByType, type_)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countEntryPerHalfHourByNodeId = `-- name: CountEntryPerHalfHourByNodeId :many
+const countEntryPerHalfHourByEntryType = `-- name: CountEntryPerHalfHourByEntryType :many
 SELECT COUNT(*) AS count,
   DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') AS hour,
   FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
 FROM entry_logs el
-WHERE el.node_id = $1 
-  AND el.type = $2
+WHERE el.type = $1
   AND DATE(el.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
   AND DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC
-LIMIT 24
 `
 
-type CountEntryPerHalfHourByNodeIdParams struct {
-	NodeID int64
-	Type   EntryLogsType
-}
-
-type CountEntryPerHalfHourByNodeIdRow struct {
+type CountEntryPerHalfHourByEntryTypeRow struct {
 	Count  int64
 	Hour   float64
 	Minute int32
 }
 
-func (q *Queries) CountEntryPerHalfHourByNodeId(ctx context.Context, arg CountEntryPerHalfHourByNodeIdParams) ([]CountEntryPerHalfHourByNodeIdRow, error) {
-	rows, err := q.db.Query(ctx, countEntryPerHalfHourByNodeId, arg.NodeID, arg.Type)
+func (q *Queries) CountEntryPerHalfHourByEntryType(ctx context.Context, type_ EntryLogsType) ([]CountEntryPerHalfHourByEntryTypeRow, error) {
+	rows, err := q.db.Query(ctx, countEntryPerHalfHourByEntryType, type_)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CountEntryPerHalfHourByNodeIdRow
+	var items []CountEntryPerHalfHourByEntryTypeRow
 	for rows.Next() {
-		var i CountEntryPerHalfHourByNodeIdRow
+		var i CountEntryPerHalfHourByEntryTypeRow
 		if err := rows.Scan(&i.Count, &i.Hour, &i.Minute); err != nil {
 			return nil, err
 		}
@@ -112,7 +98,6 @@ WHERE el.node_id = $1
   AND DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC
-LIMIT 24
 `
 
 type CountExhibitionPerHalfHourByNodeIdRow struct {
@@ -172,6 +157,20 @@ func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID int64) (
 	return sum, err
 }
 
+const countFoodStallLogByNodeIdOwned = `-- name: CountFoodStallLogByNodeIdOwned :one
+SELECT SUM(fsl.quantity)
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+WHERE nf.node_id = $1
+`
+
+func (q *Queries) CountFoodStallLogByNodeIdOwned(ctx context.Context, nodeID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countFoodStallLogByNodeIdOwned, nodeID)
+	var sum int64
+	err := row.Scan(&sum)
+	return sum, err
+}
+
 const countFoodStallPerHalfHourByFoodId = `-- name: CountFoodStallPerHalfHourByFoodId :many
 SELECT SUM(fsl.quantity) AS count,
   DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
@@ -183,7 +182,6 @@ WHERE nf.food_id = $1
   AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC
-LIMIT 24
 `
 
 type CountFoodStallPerHalfHourByFoodIdRow struct {
@@ -212,34 +210,35 @@ func (q *Queries) CountFoodStallPerHalfHourByFoodId(ctx context.Context, foodID 
 	return items, nil
 }
 
-const countFoodStallQuantityPerHourByFoodId = `-- name: CountFoodStallQuantityPerHourByFoodId :many
-SELECT SUM(fsl.quantity * f.quantity) AS count,
-  DATE_PART('hour', fsl.created_at) AS hour
+const countFoodStallPerHalfHourByNodeId = `-- name: CountFoodStallPerHalfHourByNodeId :many
+SELECT SUM(fsl.quantity) AS count,
+  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
-JOIN foods f ON nf.food_id = f.id
-WHERE nf.food_id = $1
-  AND DATE(fsl.created_at) = CURRENT_DATE
-GROUP BY hour
-ORDER BY hour
-LIMIT 24
+WHERE nf.node_id = $1
+  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour DESC, minute DESC
 `
 
-type CountFoodStallQuantityPerHourByFoodIdRow struct {
-	Count int64
-	Hour  float64
+type CountFoodStallPerHalfHourByNodeIdRow struct {
+	Count  int64
+	Hour   float64
+	Minute int32
 }
 
-func (q *Queries) CountFoodStallQuantityPerHourByFoodId(ctx context.Context, foodID int64) ([]CountFoodStallQuantityPerHourByFoodIdRow, error) {
-	rows, err := q.db.Query(ctx, countFoodStallQuantityPerHourByFoodId, foodID)
+func (q *Queries) CountFoodStallPerHalfHourByNodeId(ctx context.Context, nodeID int64) ([]CountFoodStallPerHalfHourByNodeIdRow, error) {
+	rows, err := q.db.Query(ctx, countFoodStallPerHalfHourByNodeId, nodeID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CountFoodStallQuantityPerHourByFoodIdRow
+	var items []CountFoodStallPerHalfHourByNodeIdRow
 	for rows.Next() {
-		var i CountFoodStallQuantityPerHourByFoodIdRow
-		if err := rows.Scan(&i.Count, &i.Hour); err != nil {
+		var i CountFoodStallPerHalfHourByNodeIdRow
+		if err := rows.Scan(&i.Count, &i.Hour, &i.Minute); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -760,6 +759,101 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const quantityFoodStallLogByNodeIdOwned = `-- name: QuantityFoodStallLogByNodeIdOwned :one
+SELECT SUM(fsl.quantity * f.quantity)
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+JOIN foods f ON nf.food_id = f.id
+WHERE nf.node_id = $1
+`
+
+func (q *Queries) QuantityFoodStallLogByNodeIdOwned(ctx context.Context, nodeID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, quantityFoodStallLogByNodeIdOwned, nodeID)
+	var sum int64
+	err := row.Scan(&sum)
+	return sum, err
+}
+
+const quantityFoodStallPerHalfHourByNodeId = `-- name: QuantityFoodStallPerHalfHourByNodeId :many
+SELECT SUM(fsl.quantity * f.quantity) AS quantity,
+  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+JOIN foods f ON nf.food_id = f.id
+WHERE nf.node_id = $1
+  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour DESC, minute DESC
+`
+
+type QuantityFoodStallPerHalfHourByNodeIdRow struct {
+	Quantity int64
+	Hour     float64
+	Minute   int32
+}
+
+func (q *Queries) QuantityFoodStallPerHalfHourByNodeId(ctx context.Context, nodeID int64) ([]QuantityFoodStallPerHalfHourByNodeIdRow, error) {
+	rows, err := q.db.Query(ctx, quantityFoodStallPerHalfHourByNodeId, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuantityFoodStallPerHalfHourByNodeIdRow
+	for rows.Next() {
+		var i QuantityFoodStallPerHalfHourByNodeIdRow
+		if err := rows.Scan(&i.Quantity, &i.Hour, &i.Minute); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const quantityFoodStallPerHourByFoodId = `-- name: QuantityFoodStallPerHourByFoodId :many
+SELECT SUM(fsl.quantity * f.quantity) AS quantity,
+  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+JOIN foods f ON nf.food_id = f.id
+WHERE nf.food_id = $1
+  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour DESC, minute DESC
+`
+
+type QuantityFoodStallPerHourByFoodIdRow struct {
+	Quantity int64
+	Hour     float64
+	Minute   int32
+}
+
+func (q *Queries) QuantityFoodStallPerHourByFoodId(ctx context.Context, foodID int64) ([]QuantityFoodStallPerHourByFoodIdRow, error) {
+	rows, err := q.db.Query(ctx, quantityFoodStallPerHourByFoodId, foodID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []QuantityFoodStallPerHourByFoodIdRow
+	for rows.Next() {
+		var i QuantityFoodStallPerHourByFoodIdRow
+		if err := rows.Scan(&i.Quantity, &i.Hour, &i.Minute); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setTimezoneJST = `-- name: SetTimezoneJST :exec

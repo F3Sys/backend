@@ -145,10 +145,6 @@ SET quantity = $2,
     ),
     updated_at = NOW()
 WHERE fsl.id = $1;
--- name: CountEntryLogByNodeId :one
-SELECT COUNT(*)
-FROM entry_logs
-WHERE node_id = $1;
 -- name: CountFoodStallLogByNodeId :one
 SELECT SUM(quantity)
 FROM food_stall_logs
@@ -166,23 +162,34 @@ SELECT SUM(fsl.quantity)
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.food_id = $1;
--- name: CountEntryLogTypeByNodeIdAndType :one
+-- name: CountEntryLog :one
+SELECT COUNT(*)
+FROM entry_logs;
+-- name: CountFoodStallLogByNodeIdOwned :one
+SELECT SUM(fsl.quantity)
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+WHERE nf.node_id = $1;
+-- name: QuantityFoodStallLogByNodeIdOwned :one
+SELECT SUM(fsl.quantity * f.quantity)
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+JOIN foods f ON nf.food_id = f.id
+WHERE nf.node_id = $1;
+-- name: CountEntryLogTypeByType :one
 SELECT COUNT(*)
 FROM entry_logs
-WHERE node_id = $1
-    AND type = $2;
--- name: CountEntryPerHalfHourByNodeId :many
+WHERE type = $1;
+-- name: CountEntryPerHalfHourByEntryType :many
 SELECT COUNT(*) AS count,
   DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') AS hour,
   FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
 FROM entry_logs el
-WHERE el.node_id = $1 
-  AND el.type = $2
+WHERE el.type = $1
   AND DATE(el.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
   AND DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
 GROUP BY hour, minute
-ORDER BY hour DESC, minute DESC
-LIMIT 24;
+ORDER BY hour DESC, minute DESC;
 -- name: CountFoodStallPerHalfHourByFoodId :many
 SELECT SUM(fsl.quantity) AS count,
   DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
@@ -193,19 +200,42 @@ WHERE nf.food_id = $1
   AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
   AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
 GROUP BY hour, minute
-ORDER BY hour DESC, minute DESC
-LIMIT 24;
--- name: CountFoodStallQuantityPerHourByFoodId :many
-SELECT SUM(fsl.quantity * f.quantity) AS count,
-  DATE_PART('hour', fsl.created_at) AS hour
+ORDER BY hour DESC, minute DESC;
+-- name: QuantityFoodStallPerHourByFoodId :many
+SELECT SUM(fsl.quantity * f.quantity) AS quantity,
+  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 JOIN foods f ON nf.food_id = f.id
 WHERE nf.food_id = $1
-  AND DATE(fsl.created_at) = CURRENT_DATE
-GROUP BY hour
-ORDER BY hour
-LIMIT 24;
+  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour DESC, minute DESC;
+-- name: CountFoodStallPerHalfHourByNodeId :many
+SELECT SUM(fsl.quantity) AS count,
+  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+WHERE nf.node_id = $1
+  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour DESC, minute DESC;
+-- name: QuantityFoodStallPerHalfHourByNodeId :many
+SELECT SUM(fsl.quantity * f.quantity) AS quantity,
+  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+FROM food_stall_logs fsl
+JOIN node_foods nf ON fsl.node_food_id = nf.id
+JOIN foods f ON nf.food_id = f.id
+WHERE nf.node_id = $1
+  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+GROUP BY hour, minute
+ORDER BY hour DESC, minute DESC;
 -- name: CountExhibitionPerHalfHourByNodeId :many
 SELECT COUNT(*) AS count,
   DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') AS hour,
@@ -215,5 +245,4 @@ WHERE el.node_id = $1
   AND DATE(el.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
   AND DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
 GROUP BY hour, minute
-ORDER BY hour DESC, minute DESC
-LIMIT 24;
+ORDER BY hour DESC, minute DESC;

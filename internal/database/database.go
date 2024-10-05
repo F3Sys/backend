@@ -54,6 +54,7 @@ type Service interface {
 	CountEntry(node sqlc.Node) (int64, error)
 
 	CountFoodStall(node sqlc.Node) (int64, error)
+	QuantityFoodStall(node sqlc.Node) (int64, error)
 
 	CountExhibition(node sqlc.Node) (int64, error)
 
@@ -61,11 +62,14 @@ type Service interface {
 
 	CountEntryType(node sqlc.Node) ([]NodeEntryCount, error)
 
-	CountEntryPerHour(node sqlc.Node) ([]EntryPerDay, error)
+	CountEntryPerHalfHour(node sqlc.Node) ([]EntryPerDay, error)
 
-	CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerDay, error)
+	CountFoodStallPerHalfHour(node sqlc.Node) ([]FoodStallCountPerDay, error)
+	QuantityFoodStallPerHalfHour(node sqlc.Node) ([]FoodStallQuantityPerDay, error)
+	TotalCountFoodStallPerHalfHour(node sqlc.Node) ([]FoodCountPerHalfHour, error)
+	TotalQuantityFoodStallPerHalfHour(node sqlc.Node) ([]FoodQuantityPerHalfHour, error)
 
-	CountExhibitionPerHour(node sqlc.Node) ([]ExhibitionPerDay, error)
+	CountExhibitionPerHalfHour(node sqlc.Node) ([]ExhibitionPerHour, error)
 }
 
 type DbService struct {
@@ -82,11 +86,11 @@ func New() Service {
 		return dbInstance
 	}
 
-	// dbconfig, err := pgxpool.ParseConfig(databaseURL)
-	// if err != nil {
-	// 	// handle error
-	// }
-	dbpool, err := pgxpool.New(context.Background(), databaseURL)
+	dbconfig, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		// handle error
+	}
+	dbpool, err := pgxpool.NewWithConfig(context.Background(), dbconfig)
 	if err != nil {
 		slog.Error("failed to create connection pool", "error", err)
 		os.Exit(1)
@@ -499,9 +503,9 @@ func (s *DbService) EntryRows(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog,
 		return nil, err
 	}
 
-	var rowLog []EntryRowLog
+	rowLog := make([]EntryRowLog, len(rows))
 
-	for _, row := range rows {
+	for i, row := range rows {
 		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID)
 		if err != nil {
 			return nil, err
@@ -512,7 +516,7 @@ func (s *DbService) EntryRows(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog,
 			return nil, err
 		}
 
-		rowLog = append(rowLog, EntryRowLog{row.ID, visitorF3SiD, string(row.Type), row.CreatedAt.Time})
+		rowLog[i] = EntryRowLog{row.ID, visitorF3SiD, string(row.Type), row.CreatedAt.Time}
 	}
 
 	return rowLog, nil
@@ -535,9 +539,9 @@ func (s *DbService) FoodstallRows(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstal
 		return nil, err
 	}
 
-	var rowLog []FoodstallRowLog
+	rowLog := make([]FoodstallRowLog, len(rows))
 
-	for _, row := range rows {
+	for i, row := range rows {
 		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID)
 		if err != nil {
 			return nil, err
@@ -558,7 +562,7 @@ func (s *DbService) FoodstallRows(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstal
 			return nil, err
 		}
 
-		rowLog = append(rowLog, FoodstallRowLog{row.ID, visitorF3SiD, foodByID.ID, foodByID.Name, row.Quantity, foodByID.Price, row.CreatedAt.Time})
+		rowLog[i] = FoodstallRowLog{row.ID, visitorF3SiD, foodByID.ID, foodByID.Name, row.Quantity, foodByID.Price, row.CreatedAt.Time}
 	}
 
 	return rowLog, nil
@@ -581,9 +585,9 @@ func (s *DbService) ExhibitionRows(node sqlc.Node, sqid *sqids.Sqids) ([]Exhibit
 		return nil, err
 	}
 
-	var rowLog []ExhibitionRowLog
+	rowLog := make([]ExhibitionRowLog, len(rows))
 
-	for _, row := range rows {
+	for i, row := range rows {
 		visitorByID, err := queries.GetVisitorById(ctx, row.VisitorID)
 		if err != nil {
 			return nil, err
@@ -594,7 +598,7 @@ func (s *DbService) ExhibitionRows(node sqlc.Node, sqid *sqids.Sqids) ([]Exhibit
 			return nil, err
 		}
 
-		rowLog = append(rowLog, ExhibitionRowLog{row.ID, visitorF3SiD, row.CreatedAt.Time})
+		rowLog[i] = ExhibitionRowLog{row.ID, visitorF3SiD, row.CreatedAt.Time}
 	}
 
 	return rowLog, nil
@@ -654,10 +658,10 @@ func (s *DbService) Foods(node sqlc.Node) ([]NodeFood, error) {
 		return nil, err
 	}
 
-	var foodsList []NodeFood
+	foodsList := make([]NodeFood, len(foods))
 
-	for _, food := range foods {
-		foodsList = append(foodsList, NodeFood{int(food.ID), food.Name, int(food.Price), int(food.Quantity)})
+	for i, food := range foods {
+		foodsList[i] = NodeFood{int(food.ID), food.Name, int(food.Price), int(food.Quantity)}
 	}
 
 	return foodsList, nil
@@ -675,13 +679,30 @@ func (s *DbService) CountEntry(node sqlc.Node) (int64, error) {
 	}
 	queries := sqlc.New(q)
 
-	count, err := queries.CountEntryLogByNodeId(ctx, node.ID)
+	count, err := queries.CountEntryLog(ctx)
 	if err != nil {
 		return 0, err
 	}
 
 	return count, nil
 }
+
+// func (s *DbService) QuantityEntry(node sqlc.Node) (int64, error) {
+// 	ctx := context.Background()
+
+// 	q, err := s.DB.Begin(ctx)
+// 	if err != nil {
+// 		return 0, err
+// 	}
+// 	queries := sqlc.New(q)
+
+// 	count, err := queries.CountEntryLog(ctx)
+// 	if err != nil {
+// 		return 0, err
+// 	}
+
+// 	return count, nil
+// }
 
 func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
@@ -695,13 +716,34 @@ func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
 	}
 	queries := sqlc.New(q)
 
-	count, err := queries.CountFoodStallLogByNodeId(ctx, node.ID)
+	count, err := queries.CountFoodStallLogByNodeIdOwned(ctx, node.ID)
 	if err != nil {
 		return 0, err
 	}
 
 	return count, nil
 }
+
+func (s *DbService) QuantityFoodStall(node sqlc.Node) (int64, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return 0, err
+	}
+	queries := sqlc.New(q)
+
+	count, err := queries.QuantityFoodStallLogByNodeIdOwned(ctx, node.ID)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
@@ -727,6 +769,7 @@ type NodeFoodCount struct {
 	Name     string
 	Count    int
 	Quantity int
+	Price    int
 }
 
 func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
@@ -746,14 +789,14 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 		return nil, err
 	}
 
-	var foodsList []NodeFoodCount
+	foodsList := make([]NodeFoodCount, len(foods))
 
-	for _, food := range foods {
+	for i, food := range foods {
 		foodCountById, err := queries.CountFood(ctx, food.ID)
 		if err != nil {
 			return []NodeFoodCount{}, err
 		}
-		foodsList = append(foodsList, NodeFoodCount{int(food.ID), food.Name, int(foodCountById), int(food.Quantity) * int(foodCountById)})
+		foodsList[i] = NodeFoodCount{int(food.ID), food.Name, int(foodCountById), int(food.Quantity) * int(foodCountById), int(food.Price)}
 	}
 
 	return foodsList, nil
@@ -776,33 +819,30 @@ func (s *DbService) CountEntryType(node sqlc.Node) ([]NodeEntryCount, error) {
 	}
 	queries := sqlc.New(q)
 
-	var nodeEntryCounts []NodeEntryCount
-	for _, entryType := range []sqlc.EntryLogsType{sqlc.EntryLogsTypeENTERED, sqlc.EntryLogsTypeLEFT} {
-		count, err := queries.CountEntryLogTypeByNodeIdAndType(ctx, sqlc.CountEntryLogTypeByNodeIdAndTypeParams{
-			NodeID: node.ID,
-			Type:   entryType,
-		})
+	nodeEntryCounts := make([]NodeEntryCount, 2)
+	for i, entryType := range []sqlc.EntryLogsType{sqlc.EntryLogsTypeENTERED, sqlc.EntryLogsTypeLEFT} {
+		count, err := queries.CountEntryLogTypeByType(ctx, entryType)
 		if err != nil {
 			return []NodeEntryCount{}, err
 		}
-		nodeEntryCounts = append(nodeEntryCounts, NodeEntryCount{entryType, int(count)})
+		nodeEntryCounts[i] = NodeEntryCount{entryType, int(count)}
 	}
 
 	return nodeEntryCounts, nil
 }
 
 type EntryPerDay struct {
-	Name   string         `json:"name"`
-	Counts []EntryPerHour `json:"counts"`
+	Name    string             `json:"name"`
+	Entries []EntryPerHalfHour `json:"entries"`
 }
 
-type EntryPerHour struct {
+type EntryPerHalfHour struct {
 	Hour   int `json:"hour"`
 	Minute int `json:"minute"`
 	Count  int `json:"count"`
 }
 
-func (s *DbService) CountEntryPerHour(node sqlc.Node) ([]EntryPerDay, error) {
+func (s *DbService) CountEntryPerHalfHour(node sqlc.Node) ([]EntryPerDay, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -816,17 +856,14 @@ func (s *DbService) CountEntryPerHour(node sqlc.Node) ([]EntryPerDay, error) {
 
 	var countPerDay = make([]EntryPerDay, 2)
 	for i, entryType := range []sqlc.EntryLogsType{sqlc.EntryLogsTypeENTERED, sqlc.EntryLogsTypeLEFT} {
-		rows, err := queries.CountEntryPerHalfHourByNodeId(ctx, sqlc.CountEntryPerHalfHourByNodeIdParams{
-			NodeID: node.ID,
-			Type:   entryType,
-		})
+		rows, err := queries.CountEntryPerHalfHourByEntryType(ctx, entryType)
 		if err != nil {
 			return []EntryPerDay{}, err
 		}
-		var countPerHour = make([]EntryPerHour, len(rows))
 
-		for _, row := range rows {
-			countPerHour[int(row.Hour)] = EntryPerHour{int(row.Hour), int(row.Minute), int(row.Count)}
+		var countPerHour = make([]EntryPerHalfHour, len(rows))
+		for i, row := range rows {
+			countPerHour[i] = EntryPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count)}
 		}
 		countPerDay[i] = EntryPerDay{string(entryType), countPerHour}
 	}
@@ -834,18 +871,18 @@ func (s *DbService) CountEntryPerHour(node sqlc.Node) ([]EntryPerDay, error) {
 	return countPerDay, nil
 }
 
-type FoodStallPerDay struct {
-	Name  string            `json:"name"`
-	Foods []FoodPerHalfHour `json:"foods"`
+type FoodStallCountPerDay struct {
+	Name  string                 `json:"name"`
+	Foods []FoodCountPerHalfHour `json:"foods"`
 }
 
-type FoodPerHalfHour struct {
+type FoodCountPerHalfHour struct {
 	Hour   int `json:"hour"`
 	Minute int `json:"minute"`
 	Count  int `json:"count"`
 }
 
-func (s *DbService) CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerDay, error) {
+func (s *DbService) CountFoodStallPerHalfHour(node sqlc.Node) ([]FoodStallCountPerDay, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -853,37 +890,133 @@ func (s *DbService) CountFoodStallPerHour(node sqlc.Node) ([]FoodStallPerDay, er
 		_ = q.Rollback(ctx)
 	}(q, ctx)
 	if err != nil {
-		return []FoodStallPerDay{}, err
+		return []FoodStallCountPerDay{}, err
 	}
 	queries := sqlc.New(q)
 
 	foods, err := queries.GetFoodsByNodeId(ctx, node.ID)
 	if err != nil {
-		return []FoodStallPerDay{}, err
+		return []FoodStallCountPerDay{}, err
 	}
 
-	var countPerDay = make([]FoodStallPerDay, len(foods))
+	var countPerDay = make([]FoodStallCountPerDay, len(foods))
 
 	for i, food := range foods {
 		countPerHourByFood, err := queries.CountFoodStallPerHalfHourByFoodId(ctx, food.ID)
 		if err != nil {
-			return []FoodStallPerDay{}, err
+			return []FoodStallCountPerDay{}, err
 		}
-		var countPerHour []FoodPerHalfHour
 
-		for _, row := range countPerHourByFood {
-			countPerHour = append(countPerHour, FoodPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count)})
+		countPerHour := make([]FoodCountPerHalfHour, len(countPerHourByFood))
+		for i, row := range countPerHourByFood {
+			countPerHour[i] = FoodCountPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count)}
 		}
-		countPerDay[i] = FoodStallPerDay{food.Name, countPerHour}
+		countPerDay[i] = FoodStallCountPerDay{food.Name, countPerHour}
 	}
 
 	return countPerDay, nil
 }
 
-type ExhibitionPerDay struct {
-	Name   string              `json:"name"`
-	Counts []ExhibitionPerHour `json:"counts"`
+type FoodStallQuantityPerDay struct {
+	Name  string                    `json:"name"`
+	Foods []FoodQuantityPerHalfHour `json:"foods"`
 }
+
+type FoodQuantityPerHalfHour struct {
+	Hour     int `json:"hour"`
+	Minute   int `json:"minute"`
+	Quantity int `json:"quantity"`
+}
+
+func (s *DbService) QuantityFoodStallPerHalfHour(node sqlc.Node) ([]FoodStallQuantityPerDay, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return []FoodStallQuantityPerDay{}, err
+	}
+	queries := sqlc.New(q)
+
+	foods, err := queries.GetFoodsByNodeId(ctx, node.ID)
+	if err != nil {
+		return []FoodStallQuantityPerDay{}, err
+	}
+
+	var countPerDay = make([]FoodStallQuantityPerDay, len(foods))
+
+	for i, food := range foods {
+		countPerHourByFood, err := queries.QuantityFoodStallPerHourByFoodId(ctx, food.ID)
+		if err != nil {
+			return []FoodStallQuantityPerDay{}, err
+		}
+
+		countPerHour := make([]FoodQuantityPerHalfHour, len(countPerHourByFood))
+		for i, row := range countPerHourByFood {
+			countPerHour[i] = FoodQuantityPerHalfHour{int(row.Hour), int(row.Minute), int(row.Quantity)}
+		}
+		countPerDay[i] = FoodStallQuantityPerDay{food.Name, countPerHour}
+	}
+
+	return countPerDay, nil
+}
+
+func (s *DbService) TotalCountFoodStallPerHalfHour(node sqlc.Node) ([]FoodCountPerHalfHour, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return []FoodCountPerHalfHour{}, err
+	}
+	queries := sqlc.New(q)
+
+	rows, err := queries.CountFoodStallPerHalfHourByNodeId(ctx, node.ID)
+	if err != nil {
+		return []FoodCountPerHalfHour{}, err
+	}
+
+	var countPerHour = make([]FoodCountPerHalfHour, len(rows))
+	for i, row := range rows {
+		countPerHour[i] = FoodCountPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count)}
+	}
+
+	return countPerHour, nil
+}
+
+func (s *DbService) TotalQuantityFoodStallPerHalfHour(node sqlc.Node) ([]FoodQuantityPerHalfHour, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return []FoodQuantityPerHalfHour{}, err
+	}
+	queries := sqlc.New(q)
+
+	rows, err := queries.QuantityFoodStallPerHalfHourByNodeId(ctx, node.ID)
+	if err != nil {
+		return []FoodQuantityPerHalfHour{}, err
+	}
+
+	var countPerHour = make([]FoodQuantityPerHalfHour, len(rows))
+	for i, row := range rows {
+		countPerHour[i] = FoodQuantityPerHalfHour{int(row.Hour), int(row.Minute), int(row.Quantity)}
+	}
+
+	return countPerHour, nil
+}
+
+// type ExhibitionPerDay struct {
+// 	Name   string              `json:"name"`
+// 	Counts []ExhibitionPerHour `json:"counts"`
+// }
 
 type ExhibitionPerHour struct {
 	Hour   int `json:"hour"`
@@ -891,7 +1024,7 @@ type ExhibitionPerHour struct {
 	Count  int `json:"count"`
 }
 
-func (s *DbService) CountExhibitionPerHour(node sqlc.Node) ([]ExhibitionPerDay, error) {
+func (s *DbService) CountExhibitionPerHalfHour(node sqlc.Node) ([]ExhibitionPerHour, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
@@ -899,20 +1032,22 @@ func (s *DbService) CountExhibitionPerHour(node sqlc.Node) ([]ExhibitionPerDay, 
 		_ = q.Rollback(ctx)
 	}(q, ctx)
 	if err != nil {
-		return []ExhibitionPerDay{}, err
+		return []ExhibitionPerHour{}, err
 	}
 	queries := sqlc.New(q)
 
-	var countPerDay = make([]ExhibitionPerDay, 2)
 	rows, err := queries.CountExhibitionPerHalfHourByNodeId(ctx, node.ID)
 	if err != nil {
-		return []ExhibitionPerDay{}, err
+		return []ExhibitionPerHour{}, err
 	}
-	var countPerHour = make([]ExhibitionPerHour, len(rows))
-	for _, row := range rows {
-		countPerHour[int(row.Hour)] = ExhibitionPerHour{int(row.Hour), int(row.Minute), int(row.Count)}
-	}
-	countPerDay[0] = ExhibitionPerDay{"Exhibition", countPerHour}
 
-	return countPerDay, nil
+	var countPerHour = make([]ExhibitionPerHour, len(rows))
+	for i, row := range rows {
+		countPerHour[i] = ExhibitionPerHour{int(row.Hour), int(row.Minute), int(row.Count)}
+	}
+
+	// var countPerDay = make([]ExhibitionPerHour, 1)
+	// countPerDay[0] = ExhibitionPerHour{countPerHour}
+
+	return countPerHour, nil
 }
