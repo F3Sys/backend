@@ -88,7 +88,8 @@ func New() Service {
 
 	dbconfig, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
-		// handle error
+		slog.Error("failed to parse db config", "error", err)
+		os.Exit(1)
 	}
 	dbpool, err := pgxpool.NewWithConfig(context.Background(), dbconfig)
 	if err != nil {
