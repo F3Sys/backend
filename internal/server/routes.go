@@ -908,7 +908,8 @@ func (s *Server) NodeExhibitionPerHourCountHandler(c echo.Context) error {
 			hourlyCounts[index] = exhibition.Count
 		}
 	}
-	exhibitionData := map[string]interface{}{
+	exhibitionData := make([]map[string]interface{}, 1)
+	exhibitionData[0] = map[string]interface{}{
 		"label": node.Name,
 		"data":  hourlyCounts,
 	}
