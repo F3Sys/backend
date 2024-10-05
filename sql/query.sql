@@ -1,5 +1,3 @@
--- name: SetTimezoneJST :exec
-SET TIME ZONE '9';
 -- name: GetVisitorByIp :one
 SELECT *
 FROM visitors

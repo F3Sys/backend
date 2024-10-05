@@ -856,15 +856,6 @@ func (q *Queries) QuantityFoodStallPerHourByFoodId(ctx context.Context, foodID i
 	return items, nil
 }
 
-const setTimezoneJST = `-- name: SetTimezoneJST :exec
-SET TIME ZONE '9'
-`
-
-func (q *Queries) SetTimezoneJST(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, setTimezoneJST)
-	return err
-}
-
 const updateBattery = `-- name: UpdateBattery :exec
 UPDATE batteries
 SET level = coalesce($1, level),
