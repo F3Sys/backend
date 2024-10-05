@@ -153,10 +153,6 @@ func (s *Server) RegisterRoutes() *echo.Echo { // Hosts
 		return c.String(http.StatusOK, c.Request().Header.Get("Fly-Client-IP"))
 	})
 
-	public.GET("/panic", func(c echo.Context) error {
-		panic("panic")
-	})
-
 	//---------
 	// Node Website
 	//---------
