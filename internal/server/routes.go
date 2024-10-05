@@ -118,7 +118,7 @@ func (s *Server) ApiRoutes() *echo.Echo {
 
 	data.GET("/foodstall", s.NodeFoodStallPerHalfHourHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
 
-	data.GET("/foodstall/quantity", s.NodeFoodStallQuantityPerHalfHourHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
+	// data.GET("/foodstall/quantity", s.NodeFoodStallQuantityPerHalfHourHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
 
 	data.GET("/exhibition", s.NodeExhibitionPerHourCountHandler, TypeMiddleware(sqlc.NodeTypeEXHIBITION))
 
@@ -787,7 +787,7 @@ func (s *Server) NodeFoodStallPerHalfHourHandler(c echo.Context) error {
 		}
 	}
 	foodstallTotalCountData := map[string]interface{}{
-		"label": "Total Count",
+		"label": "総回数",
 		"data":  hourlyCounts,
 	}
 
@@ -808,7 +808,7 @@ func (s *Server) NodeFoodStallPerHalfHourHandler(c echo.Context) error {
 		}
 	}
 	foodstallTotalQuantityData := map[string]interface{}{
-		"label": "Total Quantity",
+		"label": "総個数",
 		"data":  hourlyQuantities,
 	}
 
@@ -822,72 +822,72 @@ func (s *Server) NodeFoodStallPerHalfHourHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, foodstallData)
 }
 
-func (s *Server) NodeFoodStallQuantityPerHalfHourHandler(c echo.Context) error {
-	node := c.Get("node").(sqlc.Node)
+// func (s *Server) NodeFoodStallQuantityPerHalfHourHandler(c echo.Context) error {
+// 	node := c.Get("node").(sqlc.Node)
 
-	foods, err := s.DB.Foods(node)
-	if err != nil {
-		slog.Error("foods", "error", err)
-		return echo.ErrBadRequest
-	}
+// 	foods, err := s.DB.Foods(node)
+// 	if err != nil {
+// 		slog.Error("foods", "error", err)
+// 		return echo.ErrBadRequest
+// 	}
 
-	foodStallQuantities, err := s.DB.QuantityFoodStallPerHalfHour(node)
-	if err != nil {
-		slog.Error("foodStallQuantities row", "error", err)
-		return echo.ErrBadRequest
-	}
+// 	foodStallQuantities, err := s.DB.QuantityFoodStallPerHalfHour(node)
+// 	if err != nil {
+// 		slog.Error("foodStallQuantities row", "error", err)
+// 		return echo.ErrBadRequest
+// 	}
 
-	foodstallQuantityData := make([]map[string]interface{}, len(foods))
-	for i, food := range foods {
-		hourlyQuantities := make([]int, LABELS)
-		for _, quantity := range foodStallQuantities {
-			if quantity.Name == food.Name {
-				for _, quantity := range quantity.Foods {
-					index := (quantity.Hour - 8) * 2
-					if quantity.Minute == 30 {
-						index++
-					}
-					if index >= 0 && index < len(hourlyQuantities) {
-						hourlyQuantities[index] = quantity.Quantity
-					}
-				}
-			}
-		}
-		foodstallQuantityData[i] = map[string]interface{}{
-			"label": food.Name,
-			"data":  hourlyQuantities,
-		}
-	}
+// 	foodstallQuantityData := make([]map[string]interface{}, len(foods))
+// 	for i, food := range foods {
+// 		hourlyQuantities := make([]int, LABELS)
+// 		for _, quantity := range foodStallQuantities {
+// 			if quantity.Name == food.Name {
+// 				for _, quantity := range quantity.Foods {
+// 					index := (quantity.Hour - 8) * 2
+// 					if quantity.Minute == 30 {
+// 						index++
+// 					}
+// 					if index >= 0 && index < len(hourlyQuantities) {
+// 						hourlyQuantities[index] = quantity.Quantity
+// 					}
+// 				}
+// 			}
+// 		}
+// 		foodstallQuantityData[i] = map[string]interface{}{
+// 			"label": food.Name,
+// 			"data":  hourlyQuantities,
+// 		}
+// 	}
 
-	foodStallTotalQuantities, err := s.DB.TotalQuantityFoodStallPerHalfHour(node)
-	if err != nil {
-		slog.Error("foodStallTotalQuantities row", "error", err)
-		return echo.ErrBadRequest
-	}
+// 	foodStallTotalQuantities, err := s.DB.TotalQuantityFoodStallPerHalfHour(node)
+// 	if err != nil {
+// 		slog.Error("foodStallTotalQuantities row", "error", err)
+// 		return echo.ErrBadRequest
+// 	}
 
-	hourlyQuantities := make([]int, LABELS)
-	for _, quantity := range foodStallTotalQuantities {
-		index := (quantity.Hour - 8) * 2
-		if quantity.Minute == 30 {
-			index++
-		}
-		if index >= 0 && index < len(hourlyQuantities) {
-			hourlyQuantities[index] = quantity.Quantity
-		}
-	}
-	foodstallTotalQuantityData := map[string]interface{}{
-		"label": "Total Quantity",
-		"data":  hourlyQuantities,
-	}
+// 	hourlyQuantities := make([]int, LABELS)
+// 	for _, quantity := range foodStallTotalQuantities {
+// 		index := (quantity.Hour - 8) * 2
+// 		if quantity.Minute == 30 {
+// 			index++
+// 		}
+// 		if index >= 0 && index < len(hourlyQuantities) {
+// 			hourlyQuantities[index] = quantity.Quantity
+// 		}
+// 	}
+// 	foodstallTotalQuantityData := map[string]interface{}{
+// 		"label": "総回数",
+// 		"data":  hourlyQuantities,
+// 	}
 
-	foodstallData := make([]map[string]interface{}, len(foods)+1)
-	for i := range len(foods) {
-		foodstallData[i] = foodstallQuantityData[i]
-	}
-	foodstallData[len(foods)] = foodstallTotalQuantityData
+// 	foodstallData := make([]map[string]interface{}, len(foods)+1)
+// 	for i := range len(foods) {
+// 		foodstallData[i] = foodstallQuantityData[i]
+// 	}
+// 	foodstallData[len(foods)] = foodstallTotalQuantityData
 
-	return c.JSON(http.StatusOK, foodstallData)
-}
+// 	return c.JSON(http.StatusOK, foodstallData)
+// }
 
 func (s *Server) NodeExhibitionPerHourCountHandler(c echo.Context) error {
 	node := c.Get("node").(sqlc.Node)
