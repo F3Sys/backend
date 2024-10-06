@@ -37,7 +37,6 @@ func TypeMiddleware(nodeTypes ...sqlc.NodeType) echo.MiddlewareFunc {
 					return next(c)
 				}
 			}
-			slog.Error("node type middleware", "error", "invalid node type")
 			return echo.ErrBadRequest
 		}
 	}
@@ -59,10 +58,9 @@ func (s *Server) ApiRoutes() *echo.Echo {
 		return r.Header.Get("Fly-Client-IP")
 	}
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		// 	// AllowOrigins: []string{"http://localhost:4000", "https://aicj.io"},
+		// AllowOrigins: []string{"http://localhost:4000", "https://aicj.io"},
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
-	// api.Use(middleware.CORS())
 
 	// api.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(rate.Limit(20))))
 	// limiterStore := middleware.NewRateLimiterMemoryStore(rate.Limit(10))
