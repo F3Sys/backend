@@ -3,6 +3,7 @@ package server
 import (
 	"backend/internal/database"
 	"backend/internal/sqlc"
+	"embed"
 	"errors"
 	"log/slog"
 	"math/rand/v2"
@@ -13,6 +14,14 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/sqids/sqids-go"
+)
+
+var (
+	//go:embed all:assets/node
+	nodeAssets embed.FS
+
+	//go:embed all:assets/frontend
+	frontendAssets embed.FS
 )
 
 func Sqids() (*sqids.Sqids, error) {
@@ -58,7 +67,7 @@ func (s *Server) ApiRoutes() *echo.Echo {
 		return r.Header.Get("Fly-Client-IP")
 	}
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		// AllowOrigins: []string{"http://localhost:4000", "https://aicj.io"},
+		AllowOrigins: []string{"https://aicj.io", "https://node.aicj.io"},
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
 
@@ -141,30 +150,26 @@ func (s *Server) RegisterRoutes() *echo.Echo { // Hosts
 	//------
 
 	public := echo.New()
-	public.IPExtractor = func(r *http.Request) string {
-		return r.Header.Get("Fly-Client-IP")
-	}
+	public.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+		HTML5:      true,
+		Root:       "assets/frontend",
+		Filesystem: http.FS(frontendAssets),
+	}))
 
 	hosts["aicj.io"] = &Host{public}
-
-	public.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, c.Request().Header.Get("Fly-Client-IP"))
-	})
 
 	//---------
 	// Node Website
 	//---------
 
 	node := echo.New()
-	node.IPExtractor = func(r *http.Request) string {
-		return r.Header.Get("Fly-Client-IP")
-	}
+	node.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+		HTML5:      true,
+		Root:       "assets/node",
+		Filesystem: http.FS(nodeAssets),
+	}))
 
 	hosts["node.aicj.io"] = &Host{node}
-
-	node.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "node")
-	})
 
 	// Server
 	e := echo.New()
