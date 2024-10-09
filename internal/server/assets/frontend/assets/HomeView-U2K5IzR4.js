@@ -1,0 +1,32 @@
+import{d as w,o as l,c as a,a as t,t as b,F as v,r as g,b as p,B as $,s as k,m as d,e as f,u as _,f as h,g as C,h as o,w as m,i as S}from"./index-GblD9Cfj.js";const T={class:"mb-4"},A={class:"text-sm mb-2 text-primary"},F={class:"flex flex-col gap-1"},D={class:"flex flex-col sm:flex-row"},N=["href"],j={key:1},B={key:0,class:"sm:ml-2 font-light text-muted-color text-nowrap"},R={key:0,class:"flex flex-col gap-1"},V=w({__name:"CardText",props:{title:{},subtitles:{},subsubtitles:{},subsubsubtitles:{}},setup(s){const r=s;return(i,e)=>(l(),a("div",T,[t("p",A,b(r.title),1),t("div",F,[(l(!0),a(v,null,g(r.subtitles,(n,u)=>(l(),a("div",{key:n,class:"text-xl font-semibold"},[t("div",D,[t("span",null,[["Twitter","Tiktok"].includes(n)?(l(),a("a",{key:0,href:n==="Twitter"?"https://x.com/aicj_ed_jp":"https://www.tiktok.com/@wellcomeaicj",class:"hover:underline"},b(n),9,N)):(l(),a("span",j,b(n),1))]),r.subsubtitles&&r.subsubtitles.length?(l(),a("span",B,b(r.subsubtitles[u]||""),1)):p("",!0)])]))),128)),r.subsubsubtitles&&r.subsubsubtitles.length?(l(),a("div",R,[(l(!0),a(v,null,g(r.subsubsubtitles,n=>(l(),a("p",{key:n,class:"text-sm font-light text-muted-color"},b(n),1))),128))])):p("",!0)])]))}});var E=function(r){var i=r.dt;return`
+.p-card {
+    background: `.concat(i("card.background"),`;
+    color: `).concat(i("card.color"),`;
+    box-shadow: `).concat(i("card.shadow"),`;
+    border-radius: `).concat(i("card.border.radius"),`;
+    display: flex;
+    flex-direction: column;
+}
+
+.p-card-caption {
+    display: flex;
+    flex-direction: column;
+    gap: `).concat(i("card.caption.gap"),`;
+}
+
+.p-card-body {
+    padding: `).concat(i("card.body.padding"),`;
+    display: flex;
+    flex-direction: column;
+    gap: `).concat(i("card.body.gap"),`;
+}
+
+.p-card-title {
+    font-size: `).concat(i("card.title.font.size"),`;
+    font-weight: `).concat(i("card.title.font.weight"),`;
+}
+
+.p-card-subtitle {
+    color: `).concat(i("card.subtitle.color"),`;
+}
+`)},I={root:"p-card p-component",header:"p-card-header",body:"p-card-body",caption:"p-card-caption",title:"p-card-title",subtitle:"p-card-subtitle",content:"p-card-content",footer:"p-card-footer"},J=$.extend({name:"card",theme:E,classes:I}),L={name:"BaseCard",extends:k,style:J,provide:function(){return{$pcCard:this,$parentInstance:this}}},y={name:"Card",extends:L,inheritAttrs:!1};function Y(s,r,i,e,n,u){return l(),a("div",d({class:s.cx("root")},s.ptmi("root")),[s.$slots.header?(l(),a("div",d({key:0,class:s.cx("header")},s.ptm("header")),[f(s.$slots,"header")],16)):p("",!0),t("div",d({class:s.cx("body")},s.ptm("body")),[s.$slots.title||s.$slots.subtitle?(l(),a("div",d({key:0,class:s.cx("caption")},s.ptm("caption")),[s.$slots.title?(l(),a("div",d({key:0,class:s.cx("title")},s.ptm("title")),[f(s.$slots,"title")],16)):p("",!0),s.$slots.subtitle?(l(),a("div",d({key:1,class:s.cx("subtitle")},s.ptm("subtitle")),[f(s.$slots,"subtitle")],16)):p("",!0)],16)):p("",!0),t("div",d({class:s.cx("content")},s.ptm("content")),[f(s.$slots,"content")],16),s.$slots.footer?(l(),a("div",d({key:1,class:s.cx("footer")},s.ptm("footer")),[f(s.$slots,"footer")],16)):p("",!0)],16)],16)}y.render=Y;const z={class:"bg-[url(../assets/banner.webp)] bg-cover bg-no-repeat bg-center h-full min-h-[calc(100svh-75px)] relative"},H={ref:"main",class:"relative bottom-[59px]"},P={class:"flex gap-10 flex-col md:flex-row mt-10 w-full max-w-screen-xl mx-auto px-4"},G={class:"w-full max-w-screen-xl mx-auto px-4 grid lg:grid-cols-2 gap-4 my-10"},M={class:"self-start justify-self-center max-w-lg w-full grid gap-3"},O={class:"flex"},Q={class:"flex flex-col max-w-60 w-full"},q={class:"flex flex-col max-w-60 w-full"},K={class:"self-start justify-self-center max-w-lg w-full grid gap-3"},U={class:"flex"},W={class:"flex flex-col max-w-60 w-full"},X={class:"flex flex-col max-w-60 w-full"},st=w({__name:"HomeView",setup(s){const r=_("main");return(i,e)=>{const n=y,u=S,c=V;return l(),a("main",null,[t("div",z,[e[2]||(e[2]=t("h1",{class:"text-5xl font-semibold text-white absolute left-10 bottom-10",style:{"text-shadow":"0px 0px 10px black"}},[h(" AICJ 学園祭 "),t("br"),h(" 2024 ")],-1)),t("div",{class:"!absolute right-0 bottom-0 cursor-pointer",onClick:e[0]||(e[0]=Z=>{var x;return(x=C(r))==null?void 0:x.scrollIntoView()})},e[1]||(e[1]=[t("span",{class:"h-16 w-16 bg-primary text-white dark:text-black inline-flex items-center justify-center"},[t("i",{class:"pi pi-arrow-down !text-2xl"})],-1)]))]),t("div",H,null,512),t("div",P,[o(n,{class:"basis-2/3 p-4 border border-surface-200 dark:border-surface-700"},{title:m(()=>e[3]||(e[3]=[t("span",{class:"text-primary text-2xl"}," #恥ずかしいか青春は ",-1)])),content:m(()=>e[4]||(e[4]=[t("div",{class:"flex flex-col gap-2"},[t("p",{class:"leading-relaxed m-0"}," 世の中に存在する漫画・アニメ作品の実に80%ほどが中高校生を題材にしている。しかし、僕たちが学園で過ごす6年間は本来人生全体の8%にも満たない。多くの人が人生のハイライトとして渇望する青春の6年間で、何が出来るのだろうか。 "),t("p",{class:"leading-relaxed m-0"}," 今年のスローガンである「恥ずかしいか青春は」はそんな思いの答え探しと言ってもいいだろう。恥ずかしいからこそ青春でもあるのだが、限られたこの学園生活において、自分を隠して生きていくにはあまりにも勿体無い。まだ自分を見つけていない人は、学園祭を通して自分自身と向き合うこともできるだろう。共に青春を求めよう。 ")],-1)])),_:1}),o(n,{class:"basis-1/3 p-4 border border-surface-200 dark:border-surface-700"},{title:m(()=>e[5]||(e[5]=[t("span",{class:"text-2xl text-primary"}," F3S ",-1)])),content:m(()=>e[6]||(e[6]=[t("div",{class:"flex flex-col gap-2"},[t("p",{class:"leading-relaxed m-0"}," 今年導入されたF3S（フェス）は、個々人に割り当てられるQRコード（F3SiD）をつかって、学園祭の入退場や購入記録を自動管理するシステムです。 "),t("p",{class:"leading-relaxed m-0"}," F3Sで収集したデータを活用することで、在庫差異や余剰在庫の防止、来場者の予測、そしてランク付けが可能になりました。 ")],-1)])),_:1})]),t("div",G,[t("div",M,[e[7]||(e[7]=t("span",{class:"text-4xl self-start"},"開催事項",-1)),t("div",O,[o(u,{layout:"vertical"}),t("div",Q,[o(c,{title:"DAY 1 非公開日",subtitles:["2024/10/18"],subsubtitles:["(金・平)"]}),o(c,{title:"DAY 2 公開日",subtitles:["2024/10/19"],subsubtitles:["(土・休)"]}),o(c,{title:"TIME",subtitles:["9:30 - 15:30"]})]),o(u,{layout:"vertical"}),t("div",q,[o(c,{title:"SLOGAN",subtitles:["#恥ずかしいか青春は"]}),o(c,{title:"SNS",subtitles:["Twitter","Tiktok"],subsubsubtitles:["最新情報をチェック!"]})])])]),t("div",K,[e[8]||(e[8]=t("span",{class:"text-4xl self-start"},"アクセス",-1)),t("div",U,[o(u,{layout:"vertical"}),t("div",W,[o(c,{title:"PLACE",subtitles:["AICJ中学・高等学校"],subsubsubtitles:["〒731-0138","広島市安佐南区祇園3丁目1-15","公共交通機関をご利用ください"]}),o(c,{title:"ENTRY",subtitles:["F3SiD"],subsubsubtitles:["会場ではスマホでF3SiDをスキャンしてもらうため、予めご了承ください。"]})]),o(u,{layout:"vertical"}),t("div",X,[o(c,{title:"ACCESS",subtitles:["JR下祇園駅","HRT西原駅","今津バス停"],subsubtitles:["徒歩3分","徒歩10分","徒歩5分"]})])])])])])}}});export{st as default};

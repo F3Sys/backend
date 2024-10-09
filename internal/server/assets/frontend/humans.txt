@@ -1,0 +1,3 @@
+This website was created for the AICJ School Festival 2024 and is integrated with F3S.
+F3S is an automated system designed to manage entry, exit, and purchase records for school festivals using QR Codes (F3SiD) assigned to each individual.
+Developed by Tahir Murata (@pastc).
