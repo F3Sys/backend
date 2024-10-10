@@ -134,7 +134,8 @@ func (s *Server) ApiRoutes() *echo.Echo {
 	return api
 }
 
-func (s *Server) RegisterRoutes() *echo.Echo { // Hosts
+func (s *Server) RegisterRoutes() *echo.Echo {
+	// Hosts
 	hosts := map[string]*Host{}
 
 	//-----
