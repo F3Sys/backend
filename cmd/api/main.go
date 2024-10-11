@@ -13,7 +13,7 @@ func main() {
 
 	err := newServer.ListenAndServe()
 	if err != nil {
-		slog.Error("cannot start newServer", "erro", err)
+		slog.Error("cannot start newServer", "error", err)
 		os.Exit(1)
 	}
 }
