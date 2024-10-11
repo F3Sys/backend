@@ -1,0 +1,1 @@
+.parent[data-v-4c1c8f68]{display:grid;grid-template-columns:1fr 1.5fr;grid-template-rows:auto auto auto;gap:0em 1em;grid-auto-flow:row;grid-template-areas:"Order Table" "Stats Table" "Line-Chart Line-Chart"}.Order[data-v-4c1c8f68]{grid-area:Order}.Stats[data-v-4c1c8f68]{grid-area:Stats}.Table[data-v-4c1c8f68]{grid-area:Table}.Line-Chart[data-v-4c1c8f68]{grid-area:Line-Chart}
