@@ -3,6 +3,7 @@ CREATE TYPE node_type AS ENUM ('ENTRY', 'FOODSTALL', 'EXHIBITION');
 CREATE TABLE nodes (
     id BIGSERIAL PRIMARY KEY,
     key TEXT UNIQUE,
+    otp TEXT UNIQUE,
     name TEXT NOT NULL,
     ip INET UNIQUE,
     type node_type NOT NULL,

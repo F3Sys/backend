@@ -78,7 +78,7 @@ func (s *Server) ApiRoutes() *echo.Echo {
 
 	api.GET("/visitor", s.VisitorHandler) // middleware.RateLimiter(limiterStore)
 
-	api.POST("/node", s.NodeIpHandler)
+	api.POST("/node", s.NodeOTPHandler)
 
 	// api.POST("/vote", s.VoteHandler) // middleware.RateLimiter(limiterStore)
 
@@ -587,21 +587,38 @@ func (s *Server) NodeUpdateFoodStallHandler(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func (s *Server) NodeIpHandler(c echo.Context) error {
+type otpBody struct {
+	OTP string `json:"otp"`
+}
+
+func (s *Server) NodeOTPHandler(c echo.Context) error {
+	var otp otpBody
 	ip := c.RealIP()
 
 	slog.Info("turi")
 	slog.Info("ip", "ip", ip)
 
-	addr, err := netip.ParseAddr(ip)
+	err := c.Bind(&otp)
 	if err != nil {
-		slog.Error("ParseAddr", "error", err)
-		return echo.ErrInternalServerError
+		slog.Error("bind", "error", err)
+    return echo.ErrBadRequest
 	}
 
-	node, err := s.DB.IpNode(addr)
+	// addr, err := netip.ParseAddr(ip)
+	// if err != nil {
+	// 	slog.Error("ParseAddr", "error", err)
+	// 	return echo.ErrInternalServerError
+	// }
+
+	// node, err := s.DB.IpNode(addr)
+	// if err != nil {
+	// 	slog.Error("ip node", "error", err)
+	// 	return echo.ErrBadRequest
+	// }
+
+	node, err := s.DB.OTPNode(otp.OTP)
 	if err != nil {
-		slog.Error("ip node", "error", err)
+		slog.Error("otp node", "error", err)
 		return echo.ErrBadRequest
 	}
 

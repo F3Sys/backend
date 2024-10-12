@@ -153,6 +153,7 @@ type Model struct {
 type Node struct {
 	ID        int64
 	Key       pgtype.Text
+	Otp       pgtype.Text
 	Name      string
 	Ip        *netip.Addr
 	Type      NodeType

@@ -31,6 +31,8 @@ type Service interface {
 
 	IpNode(ip netip.Addr) (sqlc.Node, error)
 
+	OTPNode(otp string) (sqlc.Node, error)
+
 	PushEntry(node sqlc.Node, visitorID int64, visitorRandom int32) error
 
 	PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom int32, foods []Foods) error
@@ -633,6 +635,42 @@ func (s *DbService) IpNode(ip netip.Addr) (sqlc.Node, error) {
 	}
 
 	return nodeByIp, nil
+}
+
+func (s *DbService) OTPNode(otp string) (sqlc.Node, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return sqlc.Node{}, err
+	}
+	queries := sqlc.New(q)
+
+	nodeByOTP, err := queries.GetNodeByOTP(ctx, pgtype.Text{
+		String: otp,
+		Valid:  true,
+	})
+	if err != nil {
+		return sqlc.Node{}, err
+	}
+
+	err = queries.DeleteNodeOTP(ctx, pgtype.Text{
+		String: otp,
+		Valid:  true,
+	})
+	if err != nil {
+		return sqlc.Node{}, err
+	}
+
+	err = q.Commit(ctx)
+	if err != nil {
+		return sqlc.Node{}, err
+	}
+
+	return nodeByOTP, nil
 }
 
 type NodeFood struct {

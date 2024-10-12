@@ -392,6 +392,17 @@ func (q *Queries) DeleteNodeIp(ctx context.Context, ip *netip.Addr) error {
 	return err
 }
 
+const deleteNodeOTP = `-- name: DeleteNodeOTP :exec
+UPDATE nodes
+SET otp = NULL, updated_at = now()
+WHERE otp = $1
+`
+
+func (q *Queries) DeleteNodeOTP(ctx context.Context, otp pgtype.Text) error {
+	_, err := q.db.Exec(ctx, deleteNodeOTP, otp)
+	return err
+}
+
 const getEntryLogByNodeId = `-- name: GetEntryLogByNodeId :many
 SELECT id, node_id, visitor_id, type, created_at, updated_at
 FROM entry_logs
@@ -627,7 +638,7 @@ func (q *Queries) GetFoodsByNodeId(ctx context.Context, nodeID int64) ([]Food, e
 }
 
 const getNodeById = `-- name: GetNodeById :one
-SELECT id, key, name, ip, type, created_at, updated_at
+SELECT id, key, otp, name, ip, type, created_at, updated_at
 FROM nodes
 WHERE id = $1
 LIMIT 1
@@ -639,6 +650,7 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Key,
+		&i.Otp,
 		&i.Name,
 		&i.Ip,
 		&i.Type,
@@ -649,7 +661,7 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 }
 
 const getNodeByIp = `-- name: GetNodeByIp :one
-SELECT id, key, name, ip, type, created_at, updated_at
+SELECT id, key, otp, name, ip, type, created_at, updated_at
 FROM nodes
 WHERE ip = $1
 LIMIT 1
@@ -661,6 +673,7 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 	err := row.Scan(
 		&i.ID,
 		&i.Key,
+		&i.Otp,
 		&i.Name,
 		&i.Ip,
 		&i.Type,
@@ -671,7 +684,7 @@ func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error)
 }
 
 const getNodeByKey = `-- name: GetNodeByKey :one
-SELECT id, key, name, ip, type, created_at, updated_at
+SELECT id, key, otp, name, ip, type, created_at, updated_at
 FROM nodes
 WHERE key = $1
 LIMIT 1
@@ -683,6 +696,30 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 	err := row.Scan(
 		&i.ID,
 		&i.Key,
+		&i.Otp,
+		&i.Name,
+		&i.Ip,
+		&i.Type,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getNodeByOTP = `-- name: GetNodeByOTP :one
+SELECT id, key, otp, name, ip, type, created_at, updated_at
+FROM nodes
+WHERE otp = $1
+LIMIT 1
+`
+
+func (q *Queries) GetNodeByOTP(ctx context.Context, otp pgtype.Text) (Node, error) {
+	row := q.db.QueryRow(ctx, getNodeByOTP, otp)
+	var i Node
+	err := row.Scan(
+		&i.ID,
+		&i.Key,
+		&i.Otp,
 		&i.Name,
 		&i.Ip,
 		&i.Type,
