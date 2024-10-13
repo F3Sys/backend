@@ -25,11 +25,15 @@ type Service interface {
 
 	Vote(modelID int64, visitorID int64, visitorRandom int32) error
 
+	Batteries() ([]sqlc.Battery, error)
+
 	GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 
 	CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) (string, error)
 
 	IpNode(ip netip.Addr) (sqlc.Node, error)
+
+	NodeByID(id int64) (sqlc.Node, error)
 
 	OTPNode(otp string) (sqlc.Node, error)
 
@@ -161,6 +165,46 @@ func (s *DbService) Vote(modelID int64, visitorID int64, visitorRandom int32) er
 	}
 
 	return nil
+}
+
+func (s *DbService) NodeByID(id int64) (sqlc.Node, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return sqlc.Node{}, err
+	}
+	queries := sqlc.New(q)
+
+	nodeByID, err := queries.GetNodeById(ctx, id)
+	if err != nil {
+		return sqlc.Node{}, err
+	}
+
+	return nodeByID, nil
+}
+
+func (s *DbService) Batteries() ([]sqlc.Battery, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer func(q pgx.Tx, ctx context.Context) {
+		_ = q.Rollback(ctx)
+	}(q, ctx)
+	if err != nil {
+		return []sqlc.Battery{}, err
+	}
+	queries := sqlc.New(q)
+
+	batteries, err := queries.GetBatteries(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return batteries, nil
 }
 
 func (s *DbService) GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error) {

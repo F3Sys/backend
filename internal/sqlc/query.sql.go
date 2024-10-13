@@ -403,6 +403,40 @@ func (q *Queries) DeleteNodeOTP(ctx context.Context, otp pgtype.Text) error {
 	return err
 }
 
+const getBatteries = `-- name: GetBatteries :many
+SELECT id, node_id, level, charging_time, discharging_time, charging, created_at, updated_at
+FROM batteries
+`
+
+func (q *Queries) GetBatteries(ctx context.Context) ([]Battery, error) {
+	rows, err := q.db.Query(ctx, getBatteries)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Battery
+	for rows.Next() {
+		var i Battery
+		if err := rows.Scan(
+			&i.ID,
+			&i.NodeID,
+			&i.Level,
+			&i.ChargingTime,
+			&i.DischargingTime,
+			&i.Charging,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getEntryLogByNodeId = `-- name: GetEntryLogByNodeId :many
 SELECT id, node_id, visitor_id, type, created_at, updated_at
 FROM entry_logs
@@ -709,7 +743,7 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 const getNodeByOTP = `-- name: GetNodeByOTP :one
 SELECT id, key, otp, name, ip, type, created_at, updated_at
 FROM nodes
-WHERE otp = $1
+WHERE otp = $1 AND updated_at >= now() - INTERVAL '5 minute'
 LIMIT 1
 `
 
@@ -899,8 +933,8 @@ SET level = coalesce($1, level),
     charging_time = coalesce($2, charging_time),
     discharging_time = coalesce($3, discharging_time),
     charging = coalesce($4, charging),
-    updated_at = $5
-WHERE node_id = $6
+    updated_at = now()
+WHERE node_id = $5
 `
 
 type UpdateBatteryParams struct {
@@ -908,7 +942,6 @@ type UpdateBatteryParams struct {
 	ChargingTime    pgtype.Int4
 	DischargingTime pgtype.Int4
 	Charging        pgtype.Bool
-	ID              pgtype.Timestamp
 	NodeID          pgtype.Int8
 }
 
@@ -918,7 +951,6 @@ func (q *Queries) UpdateBattery(ctx context.Context, arg UpdateBatteryParams) er
 		arg.ChargingTime,
 		arg.DischargingTime,
 		arg.Charging,
-		arg.ID,
 		arg.NodeID,
 	)
 	return err

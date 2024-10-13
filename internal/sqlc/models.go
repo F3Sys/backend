@@ -60,6 +60,7 @@ const (
 	NodeTypeENTRY      NodeType = "ENTRY"
 	NodeTypeFOODSTALL  NodeType = "FOODSTALL"
 	NodeTypeEXHIBITION NodeType = "EXHIBITION"
+	NodeTypeBATTERY    NodeType = "BATTERY"
 )
 
 func (e *NodeType) Scan(src interface{}) error {

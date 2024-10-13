@@ -34,13 +34,16 @@ INSERT INTO batteries (
         updated_at
     )
 VALUES ($1, $2, $3, $4, $5, now());
+-- name: GetBatteries :many
+SELECT *
+FROM batteries;
 -- name: UpdateBattery :exec
 UPDATE batteries
 SET level = coalesce(sqlc.narg('level'), level),
     charging_time = coalesce(sqlc.narg('charging_time'), charging_time),
     discharging_time = coalesce(sqlc.narg('discharging_time'), discharging_time),
     charging = coalesce(sqlc.narg('charging'), charging),
-    updated_at = sqlc.arg('id')
+    updated_at = now()
 WHERE node_id = sqlc.arg('node_id');
 -- name: GetNodeById :one
 SELECT *
@@ -60,7 +63,7 @@ LIMIT 1;
 -- name: GetNodeByOTP :one
 SELECT *
 FROM nodes
-WHERE otp = $1, updated_at >= NOW() - INTERVAL '5 minute'
+WHERE otp = $1 AND updated_at >= now() - INTERVAL '5 minute'
 LIMIT 1;
 -- name: DeleteNodeIp :exec
 UPDATE nodes
