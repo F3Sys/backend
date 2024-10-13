@@ -39,12 +39,12 @@ func (q *Queries) CountEntryLogTypeByType(ctx context.Context, type_ EntryLogsTy
 
 const countEntryPerHalfHourByEntryType = `-- name: CountEntryPerHalfHourByEntryType :many
 SELECT COUNT(*) AS count,
-  DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') AS hour,
-  FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+  DATE_PART('hour', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
+  FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM entry_logs el
 WHERE el.type = $1
-  AND DATE(el.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
-  AND DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+  AND DATE(el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') = CURRENT_DATE
+  AND DATE_PART('hour', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') BETWEEN 8 AND 18
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC
 `
@@ -90,12 +90,12 @@ func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID int64) 
 
 const countExhibitionPerHalfHourByNodeId = `-- name: CountExhibitionPerHalfHourByNodeId :many
 SELECT COUNT(*) AS count,
-  DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') AS hour,
-  FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+  DATE_PART('hour', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
+  FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM exhibition_logs el
 WHERE el.node_id = $1
-  AND DATE(el.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
-  AND DATE_PART('hour', el.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+  AND DATE(el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') = CURRENT_DATE
+  AND DATE_PART('hour', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') BETWEEN 8 AND 18
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC
 `
@@ -173,13 +173,13 @@ func (q *Queries) CountFoodStallLogByNodeIdOwned(ctx context.Context, nodeID int
 
 const countFoodStallPerHalfHourByFoodId = `-- name: CountFoodStallPerHalfHourByFoodId :many
 SELECT SUM(fsl.quantity) AS count,
-  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
-  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+  DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.food_id = $1
-  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
-  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+  AND DATE(fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') BETWEEN 8 AND 18
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC
 `
@@ -212,13 +212,13 @@ func (q *Queries) CountFoodStallPerHalfHourByFoodId(ctx context.Context, foodID 
 
 const countFoodStallPerHalfHourByNodeId = `-- name: CountFoodStallPerHalfHourByNodeId :many
 SELECT SUM(fsl.quantity) AS count,
-  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
-  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+  DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.node_id = $1
-  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
-  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+  AND DATE(fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') BETWEEN 8 AND 18
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC
 `
@@ -849,14 +849,14 @@ func (q *Queries) QuantityFoodStallLogByNodeIdOwned(ctx context.Context, nodeID 
 
 const quantityFoodStallPerHalfHourByNodeId = `-- name: QuantityFoodStallPerHalfHourByNodeId :many
 SELECT SUM(fsl.quantity * f.quantity) AS quantity,
-  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
-  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+  DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 JOIN foods f ON nf.food_id = f.id
 WHERE nf.node_id = $1
-  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
-  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+  AND DATE(fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') BETWEEN 8 AND 18
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC
 `
@@ -889,14 +889,14 @@ func (q *Queries) QuantityFoodStallPerHalfHourByNodeId(ctx context.Context, node
 
 const quantityFoodStallPerHourByFoodId = `-- name: QuantityFoodStallPerHourByFoodId :many
 SELECT SUM(fsl.quantity * f.quantity) AS quantity,
-  DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') AS hour,
-  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE '+09:00') / 30) * 30 AS minute
+  DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
+  FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 JOIN foods f ON nf.food_id = f.id
 WHERE nf.food_id = $1
-  AND DATE(fsl.created_at AT TIME ZONE '+09:00') = CURRENT_DATE
-  AND DATE_PART('hour', fsl.created_at AT TIME ZONE '+09:00') BETWEEN 8 AND 18
+  AND DATE(fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') = CURRENT_DATE
+  AND DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') BETWEEN 8 AND 18
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC
 `
