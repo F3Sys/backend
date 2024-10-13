@@ -93,6 +93,8 @@ func (s *Server) ApiRoutes() *echo.Echo {
 		return ok, nil
 	}))
 
+	protected.GET("/battery", s.BatteriesHandler, TypeMiddleware(sqlc.NodeTypeBATTERY))
+
 	protected.GET("/info", s.NodeInfoHandler)
 
 	protected.GET("/foods", s.NodeFoodsHandler, TypeMiddleware(sqlc.NodeTypeFOODSTALL))
@@ -429,10 +431,10 @@ func (s *Server) NodePushExhibitionHandler(c echo.Context) error {
 }
 
 type status struct {
-	Charging        bool `json:"charging"`
-	ChargingTime    int  `json:"charging_time"`
-	DischargingTime int  `json:"discharging_time"`
-	Level           int  `json:"level"`
+	Charging        bool    `json:"charging"`
+	ChargingTime    int     `json:"charging_time"`
+	DischargingTime int     `json:"discharging_time"`
+	Level           float64 `json:"level"`
 }
 
 func (s *Server) NodeStatusHandler(c echo.Context) error {
@@ -445,7 +447,7 @@ func (s *Server) NodeStatusHandler(c echo.Context) error {
 
 	node := c.Get("node").(sqlc.Node)
 
-	err = s.DB.StatusNode(node.ID, int32(status.Level), int32(status.ChargingTime), int32(status.DischargingTime), status.Charging)
+	err = s.DB.StatusNode(node.ID, int32(status.Level*100), int32(status.ChargingTime), int32(status.DischargingTime), status.Charging)
 	if err != nil {
 		slog.Error("status", "error", err)
 		return echo.ErrBadRequest
@@ -483,6 +485,33 @@ func (s *Server) NodeFoodsHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, foodsArray)
+}
+
+func (s *Server) BatteriesHandler(c echo.Context) error {
+	batteries, err := s.DB.Batteries()
+	if err != nil {
+		slog.Error("batteries", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	batteriesArray := make([]map[string]interface{}, len(batteries))
+	for i, battery := range batteries {
+		node, err := s.DB.NodeByID(battery.NodeID.Int64)
+		if err != nil {
+			slog.Error("node by id", "error", err)
+			return echo.ErrBadRequest
+		}
+		batteriesArray[i] = map[string]interface{}{
+			"node_name":        node.Name,
+			"node_id":          node.ID,
+			"level":            battery.Level.Int32,
+			"charging_time":    battery.ChargingTime.Int32,
+			"discharging_time": battery.DischargingTime.Int32,
+			"charging":         battery.Charging.Bool,
+		}
+	}
+
+	return c.JSON(http.StatusOK, batteriesArray)
 }
 
 type visitorLookup struct {
@@ -601,7 +630,7 @@ func (s *Server) NodeOTPHandler(c echo.Context) error {
 	err := c.Bind(&otp)
 	if err != nil {
 		slog.Error("bind", "error", err)
-    return echo.ErrBadRequest
+		return echo.ErrBadRequest
 	}
 
 	// addr, err := netip.ParseAddr(ip)
