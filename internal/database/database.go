@@ -31,11 +31,11 @@ type Service interface {
 
 	CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) (string, error)
 
-	IpNode(ip netip.Addr) (sqlc.Node, error)
+	// IpNode(ip netip.Addr) (sqlc.Node, error)
 
 	NodeByID(id int64) (sqlc.Node, error)
 
-	OTPNode(otp string) (sqlc.Node, error)
+	OTPNode(otp string) (string, error)
 
 	PushEntry(node sqlc.Node, visitorID int64, visitorRandom int32) error
 
@@ -102,7 +102,6 @@ func New() Service {
 		slog.Error("failed to create connection pool", "error", err)
 		os.Exit(1)
 	}
-	// defer dbpool.Close()
 
 	if dbpool.Ping(context.Background()) != nil {
 		slog.Error("failed to ping db", "error", err)
@@ -119,9 +118,7 @@ func (s *DbService) Password(key string) (sqlc.Node, bool, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return sqlc.Node{}, false, err
 	}
@@ -142,9 +139,7 @@ func (s *DbService) Vote(modelID int64, visitorID int64, visitorRandom int32) er
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
@@ -171,9 +166,7 @@ func (s *DbService) NodeByID(id int64) (sqlc.Node, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return sqlc.Node{}, err
 	}
@@ -191,9 +184,7 @@ func (s *DbService) Batteries() ([]sqlc.Battery, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return []sqlc.Battery{}, err
 	}
@@ -211,9 +202,7 @@ func (s *DbService) GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -236,9 +225,7 @@ func (s *DbService) CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) 
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -270,9 +257,7 @@ func (s *DbService) PushEntry(node sqlc.Node, visitorID int64, visitorRandom int
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
@@ -332,9 +317,7 @@ func (s *DbService) PushFoodStall(node sqlc.Node, visitorID int64, visitorRandom
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
@@ -388,9 +371,7 @@ func (s *DbService) PushExhibition(node sqlc.Node, visitorID int64, visitorRando
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
@@ -425,9 +406,7 @@ func (s *DbService) UpdateFoodLog(node sqlc.Node, id int64, foodID int64, quanti
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
@@ -459,9 +438,7 @@ func (s *DbService) StatusNode(nodeID int64, level int32, chargingTime int32, di
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return err
 	}
@@ -490,9 +467,7 @@ func (s *DbService) IsVisitorFirst(visitorID int64) (bool, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -537,9 +512,7 @@ func (s *DbService) EntryRows(node sqlc.Node, sqid *sqids.Sqids) ([]EntryRowLog,
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -573,9 +546,7 @@ func (s *DbService) FoodstallRows(node sqlc.Node, sqid *sqids.Sqids) ([]Foodstal
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -619,9 +590,7 @@ func (s *DbService) ExhibitionRows(node sqlc.Node, sqid *sqids.Sqids) ([]Exhibit
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -651,54 +620,22 @@ func (s *DbService) ExhibitionRows(node sqlc.Node, sqid *sqids.Sqids) ([]Exhibit
 	return rowLog, nil
 }
 
-func (s *DbService) IpNode(ip netip.Addr) (sqlc.Node, error) {
+func (s *DbService) OTPNode(otp string) (string, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
-		return sqlc.Node{}, err
+		return "", err
 	}
 	queries := sqlc.New(q)
 
-	nodeByIp, err := queries.GetNodeByIp(ctx, &ip)
-	if err != nil {
-		return sqlc.Node{}, err
-	}
-
-	err = queries.DeleteNodeIp(ctx, &ip)
-	if err != nil {
-		return sqlc.Node{}, err
-	}
-
-	err = q.Commit(ctx)
-	if err != nil {
-		return sqlc.Node{}, err
-	}
-
-	return nodeByIp, nil
-}
-
-func (s *DbService) OTPNode(otp string) (sqlc.Node, error) {
-	ctx := context.Background()
-
-	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
-	if err != nil {
-		return sqlc.Node{}, err
-	}
-	queries := sqlc.New(q)
-
-	nodeByOTP, err := queries.GetNodeByOTP(ctx, pgtype.Text{
+	nodeKeyByOTP, err := queries.GetNodeByOTPReturningKey(ctx, pgtype.Text{
 		String: otp,
 		Valid:  true,
 	})
 	if err != nil {
-		return sqlc.Node{}, err
+		return "", err
 	}
 
 	err = queries.DeleteNodeOTP(ctx, pgtype.Text{
@@ -706,15 +643,15 @@ func (s *DbService) OTPNode(otp string) (sqlc.Node, error) {
 		Valid:  true,
 	})
 	if err != nil {
-		return sqlc.Node{}, err
+		return "", err
 	}
 
 	err = q.Commit(ctx)
 	if err != nil {
-		return sqlc.Node{}, err
+		return "", err
 	}
 
-	return nodeByOTP, nil
+	return nodeKeyByOTP.String, nil
 }
 
 type NodeFood struct {
@@ -728,9 +665,7 @@ func (s *DbService) Foods(node sqlc.Node) ([]NodeFood, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -754,9 +689,7 @@ func (s *DbService) CountEntry(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -770,30 +703,11 @@ func (s *DbService) CountEntry(node sqlc.Node) (int64, error) {
 	return count, nil
 }
 
-// func (s *DbService) QuantityEntry(node sqlc.Node) (int64, error) {
-// 	ctx := context.Background()
-
-// 	q, err := s.DB.Begin(ctx)
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	queries := sqlc.New(q)
-
-// 	count, err := queries.CountEntryLog(ctx)
-// 	if err != nil {
-// 		return 0, err
-// 	}
-
-// 	return count, nil
-// }
-
 func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -811,9 +725,7 @@ func (s *DbService) QuantityFoodStall(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -831,9 +743,7 @@ func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -859,9 +769,7 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return []NodeFoodCount{}, err
 	}
@@ -894,9 +802,7 @@ func (s *DbService) CountEntryType(node sqlc.Node) ([]NodeEntryCount, error) {
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return []NodeEntryCount{}, err
 	}
@@ -929,9 +835,7 @@ func (s *DbService) CountEntryPerHalfHour(node sqlc.Node) ([]EntryPerDay, error)
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return []EntryPerDay{}, err
 	}
@@ -969,9 +873,7 @@ func (s *DbService) CountFoodStallPerHalfHour(node sqlc.Node) ([]FoodStallCountP
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return []FoodStallCountPerDay{}, err
 	}
@@ -1015,9 +917,7 @@ func (s *DbService) QuantityFoodStallPerHalfHour(node sqlc.Node) ([]FoodStallQua
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return []FoodStallQuantityPerDay{}, err
 	}
@@ -1050,9 +950,7 @@ func (s *DbService) TotalCountFoodStallPerHalfHour(node sqlc.Node) ([]FoodCountP
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return []FoodCountPerHalfHour{}, err
 	}
@@ -1075,9 +973,7 @@ func (s *DbService) TotalQuantityFoodStallPerHalfHour(node sqlc.Node) ([]FoodQua
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return []FoodQuantityPerHalfHour{}, err
 	}
@@ -1111,9 +1007,7 @@ func (s *DbService) CountExhibitionPerHalfHour(node sqlc.Node) ([]ExhibitionPerH
 	ctx := context.Background()
 
 	q, err := s.DB.Begin(ctx)
-	defer func(q pgx.Tx, ctx context.Context) {
-		_ = q.Rollback(ctx)
-	}(q, ctx)
+	defer q.Rollback(ctx)
 	if err != nil {
 		return []ExhibitionPerHour{}, err
 	}

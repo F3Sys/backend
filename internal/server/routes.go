@@ -645,14 +645,14 @@ func (s *Server) NodeOTPHandler(c echo.Context) error {
 	// 	return echo.ErrBadRequest
 	// }
 
-	node, err := s.DB.OTPNode(otp.OTP)
+	key, err := s.DB.OTPNode(otp.OTP)
 	if err != nil {
 		slog.Error("otp node", "error", err)
 		return echo.ErrBadRequest
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{
-		"key": node.Key.String,
+		"key": key,
 	})
 }
 

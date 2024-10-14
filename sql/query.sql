@@ -55,24 +55,19 @@ SELECT *
 FROM nodes
 WHERE key = $1
 LIMIT 1;
--- name: GetNodeByIp :one
-SELECT *
-FROM nodes
-WHERE ip = $1
-LIMIT 1;
--- name: GetNodeByOTP :one
-SELECT *
+-- name: GetNodeByOTPReturningKey :one
+SELECT (key)
 FROM nodes
 WHERE otp = $1 AND updated_at >= now() - INTERVAL '5 minute'
 LIMIT 1;
--- name: DeleteNodeIp :exec
-UPDATE nodes
-SET ip = NULL
-WHERE ip = $1;
 -- name: DeleteNodeOTP :exec
 UPDATE nodes
 SET otp = NULL, updated_at = now()
 WHERE otp = $1;
+-- name: UpdateNodeKeyById :exec
+UPDATE nodes
+SET key = $2, updated_at = now()
+WHERE id = $1;
 -- name: GetFoodById :one
 SELECT *
 FROM foods

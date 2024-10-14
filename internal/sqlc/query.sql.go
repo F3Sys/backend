@@ -381,17 +381,6 @@ func (q *Queries) CreateVisitor(ctx context.Context, arg CreateVisitorParams) (V
 	return i, err
 }
 
-const deleteNodeIp = `-- name: DeleteNodeIp :exec
-UPDATE nodes
-SET ip = NULL
-WHERE ip = $1
-`
-
-func (q *Queries) DeleteNodeIp(ctx context.Context, ip *netip.Addr) error {
-	_, err := q.db.Exec(ctx, deleteNodeIp, ip)
-	return err
-}
-
 const deleteNodeOTP = `-- name: DeleteNodeOTP :exec
 UPDATE nodes
 SET otp = NULL, updated_at = now()
@@ -694,29 +683,6 @@ func (q *Queries) GetNodeById(ctx context.Context, id int64) (Node, error) {
 	return i, err
 }
 
-const getNodeByIp = `-- name: GetNodeByIp :one
-SELECT id, key, otp, name, ip, type, created_at, updated_at
-FROM nodes
-WHERE ip = $1
-LIMIT 1
-`
-
-func (q *Queries) GetNodeByIp(ctx context.Context, ip *netip.Addr) (Node, error) {
-	row := q.db.QueryRow(ctx, getNodeByIp, ip)
-	var i Node
-	err := row.Scan(
-		&i.ID,
-		&i.Key,
-		&i.Otp,
-		&i.Name,
-		&i.Ip,
-		&i.Type,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getNodeByKey = `-- name: GetNodeByKey :one
 SELECT id, key, otp, name, ip, type, created_at, updated_at
 FROM nodes
@@ -740,27 +706,18 @@ func (q *Queries) GetNodeByKey(ctx context.Context, key pgtype.Text) (Node, erro
 	return i, err
 }
 
-const getNodeByOTP = `-- name: GetNodeByOTP :one
-SELECT id, key, otp, name, ip, type, created_at, updated_at
+const getNodeByOTPReturningKey = `-- name: GetNodeByOTPReturningKey :one
+SELECT (key)
 FROM nodes
 WHERE otp = $1 AND updated_at >= now() - INTERVAL '5 minute'
 LIMIT 1
 `
 
-func (q *Queries) GetNodeByOTP(ctx context.Context, otp pgtype.Text) (Node, error) {
-	row := q.db.QueryRow(ctx, getNodeByOTP, otp)
-	var i Node
-	err := row.Scan(
-		&i.ID,
-		&i.Key,
-		&i.Otp,
-		&i.Name,
-		&i.Ip,
-		&i.Type,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+func (q *Queries) GetNodeByOTPReturningKey(ctx context.Context, otp pgtype.Text) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, getNodeByOTPReturningKey, otp)
+	var key pgtype.Text
+	err := row.Scan(&key)
+	return key, err
 }
 
 const getVisitorById = `-- name: GetVisitorById :one
@@ -984,6 +941,22 @@ func (q *Queries) UpdateFoodStallLog(ctx context.Context, arg UpdateFoodStallLog
 		arg.FoodID,
 		arg.NodeID,
 	)
+	return err
+}
+
+const updateNodeKeyById = `-- name: UpdateNodeKeyById :exec
+UPDATE nodes
+SET key = $2, updated_at = now()
+WHERE id = $1
+`
+
+type UpdateNodeKeyByIdParams struct {
+	ID  int64
+	Key pgtype.Text
+}
+
+func (q *Queries) UpdateNodeKeyById(ctx context.Context, arg UpdateNodeKeyByIdParams) error {
+	_, err := q.db.Exec(ctx, updateNodeKeyById, arg.ID, arg.Key)
 	return err
 }
 
