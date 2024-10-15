@@ -720,6 +720,34 @@ func (q *Queries) GetNodeByOTPReturningKey(ctx context.Context, otp pgtype.Text)
 	return key, err
 }
 
+const getStudentByVisitorIdAndRandom = `-- name: GetStudentByVisitorIdAndRandom :one
+SELECT s.id, s.visitor_id, s.grade, s.class, s.created_at, s.updated_at
+FROM students s
+JOIN visitors v ON s.visitor_id = v.id
+WHERE v.id = $1
+    AND v.random = $2
+LIMIT 1
+`
+
+type GetStudentByVisitorIdAndRandomParams struct {
+	ID     int64
+	Random int32
+}
+
+func (q *Queries) GetStudentByVisitorIdAndRandom(ctx context.Context, arg GetStudentByVisitorIdAndRandomParams) (Student, error) {
+	row := q.db.QueryRow(ctx, getStudentByVisitorIdAndRandom, arg.ID, arg.Random)
+	var i Student
+	err := row.Scan(
+		&i.ID,
+		&i.VisitorID,
+		&i.Grade,
+		&i.Class,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getVisitorById = `-- name: GetVisitorById :one
 SELECT id, model_id, ip, random, created_at, updated_at
 FROM visitors

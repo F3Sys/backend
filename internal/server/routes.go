@@ -78,6 +78,8 @@ func (s *Server) ApiRoutes() *echo.Echo {
 
 	api.GET("/visitor", s.VisitorHandler) // middleware.RateLimiter(limiterStore)
 
+	api.GET("/visitor/:f3sid", s.VisitorLookupHandler)
+
 	api.POST("/node", s.NodeOTPHandler)
 
 	// api.POST("/vote", s.VoteHandler) // middleware.RateLimiter(limiterStore)
@@ -264,6 +266,39 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]string{
 		"f3sid": visitorF3SiD,
+	})
+}
+
+func (s *Server) VisitorLookupHandler(c echo.Context) error {
+	var visitorLookup visitorLookup
+
+	err := c.Bind(&visitorLookup)
+	if err != nil {
+		slog.Error("bind", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	sqid, err := Sqids()
+	if err != nil {
+		slog.Error("sqids initialization", "error", err)
+		return echo.ErrInternalServerError
+	}
+
+	visitorLookupVisitorID := sqid.Decode(visitorLookup.visitorF3SiD)
+	if len(visitorLookupVisitorID) != 2 {
+		slog.Error("sqids decode", "error", "invalid sqids")
+		return echo.ErrBadRequest
+	}
+
+	studentByVisitor, err := s.DB.GetVisitorStudent(int64(visitorLookupVisitorID[0]), int32(visitorLookupVisitorID[1]))
+	if err != nil {
+		slog.Error("student by visitor", "error", err)
+		return echo.ErrBadRequest
+	}
+
+	return c.JSON(http.StatusOK, map[string]int{
+		"grade": int(studentByVisitor.Grade),
+		"class": int(studentByVisitor.Class),
 	})
 }
 

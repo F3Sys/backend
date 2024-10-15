@@ -18,6 +18,13 @@ LIMIT 1;
 INSERT INTO visitors (ip, random)
 VALUES ($1, $2)
 RETURNING *;
+-- name: GetStudentByVisitorIdAndRandom :one
+SELECT s.*
+FROM students s
+JOIN visitors v ON s.visitor_id = v.id
+WHERE v.id = $1
+    AND v.random = $2
+LIMIT 1;
 -- name: UpdateVisitorModel :exec
 UPDATE visitors
 SET model_id = $1,

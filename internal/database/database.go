@@ -29,6 +29,8 @@ type Service interface {
 
 	GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 
+	GetVisitorStudent(visitorID int64, visitorRandom int32) (sqlc.Student, error)
+
 	CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) (string, error)
 
 	// IpNode(ip netip.Addr) (sqlc.Node, error)
@@ -219,6 +221,35 @@ func (s *DbService) GetVisitor(ip netip.Addr, sqid *sqids.Sqids) (string, error)
 	}
 
 	return visitorF3SiD, nil
+}
+
+func (s *DbService) GetVisitorStudent(visitorID int64, visitorRandom int32) (sqlc.Student, error) {
+	ctx := context.Background()
+
+	q, err := s.DB.Begin(ctx)
+	defer q.Rollback(ctx)
+	if err != nil {
+		return sqlc.Student{}, err
+	}
+	queries := sqlc.New(q)
+
+	visitorById, err := queries.GetVisitorByIdAndRandom(ctx, sqlc.GetVisitorByIdAndRandomParams{
+		ID:     visitorID,
+		Random: visitorRandom,
+	})
+	if err != nil {
+		return sqlc.Student{}, err
+	}
+
+	studentByID, err := queries.GetStudentByVisitorIdAndRandom(ctx, sqlc.GetStudentByVisitorIdAndRandomParams{
+		ID:     visitorById.ID,
+		Random: visitorById.Random,
+	})
+	if err != nil {
+		return sqlc.Student{}, err
+	}
+
+	return studentByID, nil
 }
 
 func (s *DbService) CreateVisitor(ip netip.Addr, rand int32, sqid *sqids.Sqids) (string, error) {
