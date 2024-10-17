@@ -67,7 +67,7 @@ func (s *Server) ApiRoutes() *echo.Echo {
 		return r.Header.Get("Fly-Client-IP")
 	}
 	api.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"https://aicj.io", "https://node.aicj.io"},
+		AllowOrigins: []string{"https://aicj.io", "https://node.aicj.io", "http://localhost:4001"},
 		AllowMethods: []string{http.MethodGet, http.MethodPatch, http.MethodPost},
 	}))
 
@@ -78,7 +78,7 @@ func (s *Server) ApiRoutes() *echo.Echo {
 
 	api.GET("/visitor", s.VisitorHandler) // middleware.RateLimiter(limiterStore)
 
-	api.GET("/visitor/:f3sid", s.VisitorLookupHandler)
+	// api.GET("/visitor/:f3sid", s.VisitorLookupHandler)
 
 	api.POST("/node", s.NodeOTPHandler)
 
@@ -269,12 +269,22 @@ func (s *Server) VisitorHandler(c echo.Context) error {
 	})
 }
 
-func (s *Server) VisitorLookupHandler(c echo.Context) error {
-	var visitorLookup visitorLookup
+// type visitorLookup struct {
+// 	visitorF3SiD string `param:"f3sid"`
+// }
 
-	err := c.Bind(&visitorLookup)
-	if err != nil {
-		slog.Error("bind", "error", err)
+func (s *Server) VisitorLookupHandler(c echo.Context) error {
+	// var visitorLookup visitorLookup
+
+	// err := c.Bind(&visitorLookup)
+	// if err != nil {
+	// 	slog.Error("bind", "error", err)
+	// 	return echo.ErrBadRequest
+	// }
+
+	f3sid := c.Param("f3sid")
+	if f3sid == "" {
+		slog.Error("f3sid", "error", "empty f3sid")
 		return echo.ErrBadRequest
 	}
 
@@ -284,7 +294,7 @@ func (s *Server) VisitorLookupHandler(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	visitorLookupVisitorID := sqid.Decode(visitorLookup.visitorF3SiD)
+	visitorLookupVisitorID := sqid.Decode(f3sid)
 	if len(visitorLookupVisitorID) != 2 {
 		slog.Error("sqids decode", "error", "invalid sqids")
 		return echo.ErrBadRequest
@@ -549,16 +559,11 @@ func (s *Server) BatteriesHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, batteriesArray)
 }
 
-type visitorLookup struct {
-	visitorF3SiD string `param:"f3sid"`
-}
-
 func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
-	var visitorLookup visitorLookup
+	f3sid := c.Param("f3sid")
 
-	err := c.Bind(&visitorLookup)
-	if err != nil {
-		slog.Error("bind", "error", err)
+	if f3sid == "" {
+		slog.Error("f3sid", "error", "empty f3sid")
 		return echo.ErrBadRequest
 	}
 
@@ -568,7 +573,7 @@ func (s *Server) NodeVisitorLookupHandler(c echo.Context) error {
 		return echo.ErrInternalServerError
 	}
 
-	visitorLookupVisitorID := sqid.Decode(visitorLookup.visitorF3SiD)
+	visitorLookupVisitorID := sqid.Decode(f3sid)
 	if len(visitorLookupVisitorID) != 2 {
 		slog.Error("sqids decode", "error", "invalid sqids")
 		return echo.ErrBadRequest
