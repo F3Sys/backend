@@ -731,7 +731,7 @@ func (s *DbService) CountEntry(node sqlc.Node) (int64, error) {
 		return 0, err
 	}
 
-	return count, nil
+	return count.(int64), nil
 }
 
 func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
@@ -749,7 +749,7 @@ func (s *DbService) CountFoodStall(node sqlc.Node) (int64, error) {
 		return 0, err
 	}
 
-	return count, nil
+	return count.(int64), nil
 }
 
 func (s *DbService) QuantityFoodStall(node sqlc.Node) (int64, error) {
@@ -767,7 +767,7 @@ func (s *DbService) QuantityFoodStall(node sqlc.Node) (int64, error) {
 		return 0, err
 	}
 
-	return count, nil
+	return count.(int64), nil
 }
 
 func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
@@ -785,7 +785,7 @@ func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 		return 0, err
 	}
 
-	return count, nil
+	return count.(int64), nil
 }
 
 type NodeFoodCount struct {
@@ -818,7 +818,7 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 		if err != nil {
 			return []NodeFoodCount{}, err
 		}
-		foodsList[i] = NodeFoodCount{int(food.ID), food.Name, int(foodCountById), int(food.Quantity) * int(foodCountById), int(food.Price)}
+		foodsList[i] = NodeFoodCount{int(food.ID), food.Name, int(foodCountById.(int64)), int(food.Quantity) * int(foodCountById.(int64)), int(food.Price)}
 	}
 
 	return foodsList, nil
@@ -845,7 +845,7 @@ func (s *DbService) CountEntryType(node sqlc.Node) ([]NodeEntryCount, error) {
 		if err != nil {
 			return []NodeEntryCount{}, err
 		}
-		nodeEntryCounts[i] = NodeEntryCount{entryType, int(count)}
+		nodeEntryCounts[i] = NodeEntryCount{entryType, int(count.(int64))}
 	}
 
 	return nodeEntryCounts, nil
@@ -881,7 +881,7 @@ func (s *DbService) CountEntryPerHalfHour(node sqlc.Node) ([]EntryPerDay, error)
 
 		var countPerHour = make([]EntryPerHalfHour, len(rows))
 		for i, row := range rows {
-			countPerHour[i] = EntryPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count)}
+			countPerHour[i] = EntryPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count.(int64))}
 		}
 		countPerDay[i] = EntryPerDay{string(entryType), countPerHour}
 	}
@@ -925,7 +925,7 @@ func (s *DbService) CountFoodStallPerHalfHour(node sqlc.Node) ([]FoodStallCountP
 
 		countPerHour := make([]FoodCountPerHalfHour, len(countPerHourByFood))
 		for i, row := range countPerHourByFood {
-			countPerHour[i] = FoodCountPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count)}
+			countPerHour[i] = FoodCountPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count.(int64))}
 		}
 		countPerDay[i] = FoodStallCountPerDay{food.Name, countPerHour}
 	}
@@ -969,7 +969,7 @@ func (s *DbService) QuantityFoodStallPerHalfHour(node sqlc.Node) ([]FoodStallQua
 
 		countPerHour := make([]FoodQuantityPerHalfHour, len(countPerHourByFood))
 		for i, row := range countPerHourByFood {
-			countPerHour[i] = FoodQuantityPerHalfHour{int(row.Hour), int(row.Minute), int(row.Quantity)}
+			countPerHour[i] = FoodQuantityPerHalfHour{int(row.Hour), int(row.Minute), int(row.Quantity.(int64))}
 		}
 		countPerDay[i] = FoodStallQuantityPerDay{food.Name, countPerHour}
 	}
@@ -994,7 +994,7 @@ func (s *DbService) TotalCountFoodStallPerHalfHour(node sqlc.Node) ([]FoodCountP
 
 	var countPerHour = make([]FoodCountPerHalfHour, len(rows))
 	for i, row := range rows {
-		countPerHour[i] = FoodCountPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count)}
+		countPerHour[i] = FoodCountPerHalfHour{int(row.Hour), int(row.Minute), int(row.Count.(int64))}
 	}
 
 	return countPerHour, nil
@@ -1017,7 +1017,7 @@ func (s *DbService) TotalQuantityFoodStallPerHalfHour(node sqlc.Node) ([]FoodQua
 
 	var countPerHour = make([]FoodQuantityPerHalfHour, len(rows))
 	for i, row := range rows {
-		countPerHour[i] = FoodQuantityPerHalfHour{int(row.Hour), int(row.Minute), int(row.Quantity)}
+		countPerHour[i] = FoodQuantityPerHalfHour{int(row.Hour), int(row.Minute), int(row.Quantity.(int64))}
 	}
 
 	return countPerHour, nil
@@ -1051,7 +1051,7 @@ func (s *DbService) CountExhibitionPerHalfHour(node sqlc.Node) ([]ExhibitionPerH
 
 	var countPerHour = make([]ExhibitionPerHour, len(rows))
 	for i, row := range rows {
-		countPerHour[i] = ExhibitionPerHour{int(row.Hour), int(row.Minute), int(row.Count)}
+		countPerHour[i] = ExhibitionPerHour{int(row.Hour), int(row.Minute), int(row.Count.(int64))}
 	}
 
 	// var countPerDay = make([]ExhibitionPerHour, 1)

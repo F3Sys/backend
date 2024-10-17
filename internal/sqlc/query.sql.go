@@ -13,32 +13,32 @@ import (
 )
 
 const countEntryLog = `-- name: CountEntryLog :one
-SELECT COUNT(*)
+SELECT COALESCE(COUNT(*), 0) as count
 FROM entry_logs
 `
 
-func (q *Queries) CountEntryLog(ctx context.Context) (int64, error) {
+func (q *Queries) CountEntryLog(ctx context.Context) (interface{}, error) {
 	row := q.db.QueryRow(ctx, countEntryLog)
-	var count int64
+	var count interface{}
 	err := row.Scan(&count)
 	return count, err
 }
 
 const countEntryLogTypeByType = `-- name: CountEntryLogTypeByType :one
-SELECT COUNT(*)
+SELECT COALESCE(COUNT(*), 0) AS count
 FROM entry_logs
 WHERE type = $1
 `
 
-func (q *Queries) CountEntryLogTypeByType(ctx context.Context, type_ EntryLogsType) (int64, error) {
+func (q *Queries) CountEntryLogTypeByType(ctx context.Context, type_ EntryLogsType) (interface{}, error) {
 	row := q.db.QueryRow(ctx, countEntryLogTypeByType, type_)
-	var count int64
+	var count interface{}
 	err := row.Scan(&count)
 	return count, err
 }
 
 const countEntryPerHalfHourByEntryType = `-- name: CountEntryPerHalfHourByEntryType :many
-SELECT COUNT(*) AS count,
+SELECT COALESCE(COUNT(*), 0) AS count,
   DATE_PART('hour', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM entry_logs el
@@ -50,7 +50,7 @@ ORDER BY hour DESC, minute DESC
 `
 
 type CountEntryPerHalfHourByEntryTypeRow struct {
-	Count  int64
+	Count  interface{}
 	Hour   float64
 	Minute int32
 }
@@ -76,20 +76,20 @@ func (q *Queries) CountEntryPerHalfHourByEntryType(ctx context.Context, type_ En
 }
 
 const countExhibitionLogByNodeId = `-- name: CountExhibitionLogByNodeId :one
-SELECT COUNT(*)
+SELECT COALESCE(COUNT(*), 0) as count
 FROM exhibition_logs
 WHERE node_id = $1
 `
 
-func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID int64) (int64, error) {
+func (q *Queries) CountExhibitionLogByNodeId(ctx context.Context, nodeID int64) (interface{}, error) {
 	row := q.db.QueryRow(ctx, countExhibitionLogByNodeId, nodeID)
-	var count int64
+	var count interface{}
 	err := row.Scan(&count)
 	return count, err
 }
 
 const countExhibitionPerHalfHourByNodeId = `-- name: CountExhibitionPerHalfHourByNodeId :many
-SELECT COUNT(*) AS count,
+SELECT COALESCE(COUNT(*), 0) AS count,
   DATE_PART('hour', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM exhibition_logs el
@@ -101,7 +101,7 @@ ORDER BY hour DESC, minute DESC
 `
 
 type CountExhibitionPerHalfHourByNodeIdRow struct {
-	Count  int64
+	Count  interface{}
 	Hour   float64
 	Minute int32
 }
@@ -127,21 +127,21 @@ func (q *Queries) CountExhibitionPerHalfHourByNodeId(ctx context.Context, nodeID
 }
 
 const countFood = `-- name: CountFood :one
-SELECT SUM(fsl.quantity)
+SELECT COALESCE(SUM(fsl.quantity), 0) as sum
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.food_id = $1
 `
 
-func (q *Queries) CountFood(ctx context.Context, foodID int64) (int64, error) {
+func (q *Queries) CountFood(ctx context.Context, foodID int64) (interface{}, error) {
 	row := q.db.QueryRow(ctx, countFood, foodID)
-	var sum int64
+	var sum interface{}
 	err := row.Scan(&sum)
 	return sum, err
 }
 
 const countFoodStallLogByNodeId = `-- name: CountFoodStallLogByNodeId :one
-SELECT SUM(quantity)
+SELECT COALESCE(SUM(quantity), 0) as sum
 FROM food_stall_logs
 WHERE node_food_id IN (
     SELECT id
@@ -150,29 +150,29 @@ WHERE node_food_id IN (
 )
 `
 
-func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID int64) (int64, error) {
+func (q *Queries) CountFoodStallLogByNodeId(ctx context.Context, nodeID int64) (interface{}, error) {
 	row := q.db.QueryRow(ctx, countFoodStallLogByNodeId, nodeID)
-	var sum int64
+	var sum interface{}
 	err := row.Scan(&sum)
 	return sum, err
 }
 
 const countFoodStallLogByNodeIdOwned = `-- name: CountFoodStallLogByNodeIdOwned :one
-SELECT SUM(fsl.quantity)
+SELECT COALESCE(SUM(fsl.quantity), 0) as sum
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.node_id = $1
 `
 
-func (q *Queries) CountFoodStallLogByNodeIdOwned(ctx context.Context, nodeID int64) (int64, error) {
+func (q *Queries) CountFoodStallLogByNodeIdOwned(ctx context.Context, nodeID int64) (interface{}, error) {
 	row := q.db.QueryRow(ctx, countFoodStallLogByNodeIdOwned, nodeID)
-	var sum int64
+	var sum interface{}
 	err := row.Scan(&sum)
 	return sum, err
 }
 
 const countFoodStallPerHalfHourByFoodId = `-- name: CountFoodStallPerHalfHourByFoodId :many
-SELECT SUM(fsl.quantity) AS count,
+SELECT COALESCE(SUM(fsl.quantity), 0) AS count,
   DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
@@ -185,7 +185,7 @@ ORDER BY hour DESC, minute DESC
 `
 
 type CountFoodStallPerHalfHourByFoodIdRow struct {
-	Count  int64
+	Count  interface{}
 	Hour   float64
 	Minute int32
 }
@@ -211,7 +211,7 @@ func (q *Queries) CountFoodStallPerHalfHourByFoodId(ctx context.Context, foodID 
 }
 
 const countFoodStallPerHalfHourByNodeId = `-- name: CountFoodStallPerHalfHourByNodeId :many
-SELECT SUM(fsl.quantity) AS count,
+SELECT COALESCE(SUM(fsl.quantity), 0) AS count,
   DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
@@ -224,7 +224,7 @@ ORDER BY hour DESC, minute DESC
 `
 
 type CountFoodStallPerHalfHourByNodeIdRow struct {
-	Count  int64
+	Count  interface{}
 	Hour   float64
 	Minute int32
 }
@@ -818,22 +818,22 @@ func (q *Queries) GetVisitorByIp(ctx context.Context, ip *netip.Addr) (Visitor, 
 }
 
 const quantityFoodStallLogByNodeIdOwned = `-- name: QuantityFoodStallLogByNodeIdOwned :one
-SELECT SUM(fsl.quantity * f.quantity)
+SELECT COALESCE(SUM(fsl.quantity * f.quantity), 0) AS sum
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 JOIN foods f ON nf.food_id = f.id
 WHERE nf.node_id = $1
 `
 
-func (q *Queries) QuantityFoodStallLogByNodeIdOwned(ctx context.Context, nodeID int64) (int64, error) {
+func (q *Queries) QuantityFoodStallLogByNodeIdOwned(ctx context.Context, nodeID int64) (interface{}, error) {
 	row := q.db.QueryRow(ctx, quantityFoodStallLogByNodeIdOwned, nodeID)
-	var sum int64
+	var sum interface{}
 	err := row.Scan(&sum)
 	return sum, err
 }
 
 const quantityFoodStallPerHalfHourByNodeId = `-- name: QuantityFoodStallPerHalfHourByNodeId :many
-SELECT SUM(fsl.quantity * f.quantity) AS quantity,
+SELECT COALESCE(SUM(fsl.quantity * f.quantity), 0) AS quantity,
   DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
@@ -847,7 +847,7 @@ ORDER BY hour DESC, minute DESC
 `
 
 type QuantityFoodStallPerHalfHourByNodeIdRow struct {
-	Quantity int64
+	Quantity interface{}
 	Hour     float64
 	Minute   int32
 }
@@ -873,7 +873,7 @@ func (q *Queries) QuantityFoodStallPerHalfHourByNodeId(ctx context.Context, node
 }
 
 const quantityFoodStallPerHourByFoodId = `-- name: QuantityFoodStallPerHourByFoodId :many
-SELECT SUM(fsl.quantity * f.quantity) AS quantity,
+SELECT COALESCE(SUM(fsl.quantity * f.quantity), 0) AS quantity,
   DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
@@ -887,7 +887,7 @@ ORDER BY hour DESC, minute DESC
 `
 
 type QuantityFoodStallPerHourByFoodIdRow struct {
-	Quantity int64
+	Quantity interface{}
 	Hour     float64
 	Minute   int32
 }

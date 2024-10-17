@@ -158,7 +158,7 @@ SET quantity = $2,
     updated_at = NOW()
 WHERE fsl.id = $1;
 -- name: CountFoodStallLogByNodeId :one
-SELECT SUM(quantity)
+SELECT COALESCE(SUM(quantity), 0) as sum
 FROM food_stall_logs
 WHERE node_food_id IN (
     SELECT id
@@ -166,34 +166,34 @@ WHERE node_food_id IN (
     WHERE node_id = $1
 );
 -- name: CountExhibitionLogByNodeId :one
-SELECT COUNT(*)
+SELECT COALESCE(COUNT(*), 0) as count
 FROM exhibition_logs
 WHERE node_id = $1;
 -- name: CountFood :one
-SELECT SUM(fsl.quantity)
+SELECT COALESCE(SUM(fsl.quantity), 0) as sum
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.food_id = $1;
 -- name: CountEntryLog :one
-SELECT COUNT(*)
+SELECT COALESCE(COUNT(*), 0) as count
 FROM entry_logs;
 -- name: CountFoodStallLogByNodeIdOwned :one
-SELECT SUM(fsl.quantity)
+SELECT COALESCE(SUM(fsl.quantity), 0) as sum
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.node_id = $1;
 -- name: QuantityFoodStallLogByNodeIdOwned :one
-SELECT SUM(fsl.quantity * f.quantity)
+SELECT COALESCE(SUM(fsl.quantity * f.quantity), 0) AS sum
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 JOIN foods f ON nf.food_id = f.id
 WHERE nf.node_id = $1;
 -- name: CountEntryLogTypeByType :one
-SELECT COUNT(*)
+SELECT COALESCE(COUNT(*), 0) AS count
 FROM entry_logs
 WHERE type = $1;
 -- name: CountEntryPerHalfHourByEntryType :many
-SELECT COUNT(*) AS count,
+SELECT COALESCE(COUNT(*), 0) AS count,
   DATE_PART('hour', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM entry_logs el
@@ -203,7 +203,7 @@ WHERE el.type = $1
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC;
 -- name: CountFoodStallPerHalfHourByFoodId :many
-SELECT SUM(fsl.quantity) AS count,
+SELECT COALESCE(SUM(fsl.quantity), 0) AS count,
   DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
@@ -214,7 +214,7 @@ WHERE nf.food_id = $1
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC;
 -- name: QuantityFoodStallPerHourByFoodId :many
-SELECT SUM(fsl.quantity * f.quantity) AS quantity,
+SELECT COALESCE(SUM(fsl.quantity * f.quantity), 0) AS quantity,
   DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
@@ -226,7 +226,7 @@ WHERE nf.food_id = $1
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC;
 -- name: CountFoodStallPerHalfHourByNodeId :many
-SELECT SUM(fsl.quantity) AS count,
+SELECT COALESCE(SUM(fsl.quantity), 0) AS count,
   DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
@@ -237,7 +237,7 @@ WHERE nf.node_id = $1
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC;
 -- name: QuantityFoodStallPerHalfHourByNodeId :many
-SELECT SUM(fsl.quantity * f.quantity) AS quantity,
+SELECT COALESCE(SUM(fsl.quantity * f.quantity), 0) AS quantity,
   DATE_PART('hour', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM food_stall_logs fsl
@@ -249,7 +249,7 @@ WHERE nf.node_id = $1
 GROUP BY hour, minute
 ORDER BY hour DESC, minute DESC;
 -- name: CountExhibitionPerHalfHourByNodeId :many
-SELECT COUNT(*) AS count,
+SELECT COALESCE(COUNT(*), 0) AS count,
   DATE_PART('hour', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') AS hour,
   FLOOR(DATE_PART('minute', el.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') / 30) * 30 AS minute
 FROM exhibition_logs el
