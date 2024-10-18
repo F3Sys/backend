@@ -169,11 +169,21 @@ WHERE node_food_id IN (
 SELECT COALESCE(COUNT(*), 0) as count
 FROM exhibition_logs
 WHERE node_id = $1;
--- name: CountFood :one
-SELECT COALESCE(SUM(fsl.quantity), 0) as sum
+-- name: CountFoodStallLogDates :one
+SELECT COUNT(DISTINCT DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST')) as count
+FROM food_stall_logs
+WHERE node_food_id IN (
+    SELECT id
+    FROM node_foods
+    WHERE node_id = $1
+);
+-- name: CountFood :many
+SELECT COALESCE(SUM(fsl.quantity), 0) as sum, DATE(fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') as date
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
-WHERE nf.food_id = $1;
+WHERE nf.food_id = $1
+GROUP BY date
+ORDER BY date DESC;
 -- name: CountEntryLog :one
 SELECT COALESCE(COUNT(*), 0) as count
 FROM entry_logs;

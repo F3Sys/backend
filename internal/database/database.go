@@ -790,6 +790,7 @@ func (s *DbService) CountExhibition(node sqlc.Node) (int64, error) {
 
 type NodeFoodCount struct {
 	ID       int
+	Date     int
 	Name     string
 	Count    int
 	Quantity int
@@ -808,17 +809,33 @@ func (s *DbService) CountFood(node sqlc.Node) ([]NodeFoodCount, error) {
 
 	foods, err := queries.GetFoodsByNodeId(ctx, node.ID)
 	if err != nil {
-		return nil, err
+		return []NodeFoodCount{}, err
 	}
 
-	foodsList := make([]NodeFoodCount, len(foods))
+	dates, err := queries.CountFoodStallLogDates(ctx, node.ID)
+	if err != nil {
+		return []NodeFoodCount{}, err
+	}
 
-	for i, food := range foods {
+	foodsList := make([]NodeFoodCount, len(foods)*int(dates))
+
+	index := 0
+	for _, food := range foods {
 		foodCountById, err := queries.CountFood(ctx, food.ID)
 		if err != nil {
 			return []NodeFoodCount{}, err
 		}
-		foodsList[i] = NodeFoodCount{int(food.ID), food.Name, int(foodCountById.(int64)), int(food.Quantity) * int(foodCountById.(int64)), int(food.Price)}
+		for _, count := range foodCountById {
+			foodsList[index] = NodeFoodCount{
+				ID:       int(food.ID),
+				Date:     count.Date.Time.Day(),
+				Name:     food.Name,
+				Count:    int(count.Sum.(int64)),
+				Quantity: int(food.Quantity) * int(count.Sum.(int64)),
+				Price:    int(food.Price),
+			}
+			index++
+		}
 	}
 
 	return foodsList, nil

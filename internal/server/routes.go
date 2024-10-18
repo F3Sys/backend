@@ -548,6 +548,7 @@ func (s *Server) BatteriesHandler(c echo.Context) error {
 		}
 		batteriesArray[i] = map[string]interface{}{
 			"node_name":        node.Name,
+			"node_type":        node.Type,
 			"node_id":          node.ID,
 			"level":            battery.Level.Int32,
 			"charging_time":    battery.ChargingTime.Int32,
@@ -759,6 +760,7 @@ func (s *Server) NodeFoodCountHandler(c echo.Context) error {
 	for i, food := range foodCount {
 		foodsArray[i] = map[string]interface{}{
 			"id":       food.ID,
+			"date":     food.Date,
 			"name":     food.Name,
 			"count":    food.Count,
 			"quantity": food.Quantity,

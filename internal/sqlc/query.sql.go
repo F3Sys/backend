@@ -126,18 +126,38 @@ func (q *Queries) CountExhibitionPerHalfHourByNodeId(ctx context.Context, nodeID
 	return items, nil
 }
 
-const countFood = `-- name: CountFood :one
-SELECT COALESCE(SUM(fsl.quantity), 0) as sum
+const countFood = `-- name: CountFood :many
+SELECT COALESCE(SUM(fsl.quantity), 0) as sum, DATE(fsl.created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST') as date
 FROM food_stall_logs fsl
 JOIN node_foods nf ON fsl.node_food_id = nf.id
 WHERE nf.food_id = $1
+GROUP BY date
+ORDER BY date DESC
 `
 
-func (q *Queries) CountFood(ctx context.Context, foodID int64) (interface{}, error) {
-	row := q.db.QueryRow(ctx, countFood, foodID)
-	var sum interface{}
-	err := row.Scan(&sum)
-	return sum, err
+type CountFoodRow struct {
+	Sum  interface{}
+	Date pgtype.Date
+}
+
+func (q *Queries) CountFood(ctx context.Context, foodID int64) ([]CountFoodRow, error) {
+	rows, err := q.db.Query(ctx, countFood, foodID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountFoodRow
+	for rows.Next() {
+		var i CountFoodRow
+		if err := rows.Scan(&i.Sum, &i.Date); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const countFoodStallLogByNodeId = `-- name: CountFoodStallLogByNodeId :one
@@ -169,6 +189,23 @@ func (q *Queries) CountFoodStallLogByNodeIdOwned(ctx context.Context, nodeID int
 	var sum interface{}
 	err := row.Scan(&sum)
 	return sum, err
+}
+
+const countFoodStallLogDates = `-- name: CountFoodStallLogDates :one
+SELECT COUNT(DISTINCT DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'JST')) as count
+FROM food_stall_logs
+WHERE node_food_id IN (
+    SELECT id
+    FROM node_foods
+    WHERE node_id = $1
+)
+`
+
+func (q *Queries) CountFoodStallLogDates(ctx context.Context, nodeID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countFoodStallLogDates, nodeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countFoodStallPerHalfHourByFoodId = `-- name: CountFoodStallPerHalfHourByFoodId :many
